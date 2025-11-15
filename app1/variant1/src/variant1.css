@@ -1,0 +1,57 @@
+/* Макет как в BookingVariant1: две колонки */
+.booking-variant1-row {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+  width: 100%;
+  box-sizing: border-box;
+}
+.booking-variant1-chart,
+.booking-variant1-side {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-height: 0;
+}
+.booking-variant1-side {
+  flex: 0 1 30%;
+  max-width: 30%;
+  min-width: 260px;
+  background: #fff;
+  border-radius: 24px;
+  padding: 24px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  box-shadow: none !important;
+}
+
+/* Левый график (variant1) */
+.v1-wrap { width: 100%; }
+.v1-title { color:#185a90; font-weight:900; font-size:28px; margin:8px 0 16px; }
+.v1-scroll { width:100%; overflow-x:auto; }
+.v1-grid { position:relative; }
+.v1-hours-row { display:flex; gap:11px; margin-left:100px; margin-bottom:8px; position:sticky; top:0; background:#fff; z-index:10; }
+.v1-hour { min-width:60px; text-align:center; color:#185a90; font-weight:800; white-space:nowrap; padding:4px 0; border-radius:8px; }
+.v1-hour.current { background:#ffe79e; box-shadow:0 0 0 2px #ffc23b55; }
+.v1-rows { display:flex; flex-direction:column; gap:10px; }
+.v1-row { display:flex; align-items:flex-end; }
+.v1-date { width:100px; min-width:100px; text-align:left; color:#133d61; font-weight:900; margin-right:10px; white-space:nowrap; }
+.v1-bars { display:flex; flex-direction:row; align-items:flex-end; }
+.v1-bar { display:flex; align-items:flex-end; justify-content:center; cursor:default; }
+.v1-bar-inner { position:relative; width:100%; border-radius:10px; }
+.v1-seg { width:100%; border-radius:7px; }
+.v1-break {
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-size:12px; font-weight:900; color:#185a90; background:#f2f6fa; border-radius:10px;
+}
+
+/* Общие лейблы */
+.v1-loading, .v1-error {
+  margin-top: 14px; padding: 10px 12px; border-radius: 10px;
+  background:#f5f8fb; color:#185a90; font-weight:700; display:inline-block;
+}
+.v1-error { color:#b00020; background:#fdecec; }
+
+/* Попап мы используем готовые классы из graph2.css / poolBooking.css */

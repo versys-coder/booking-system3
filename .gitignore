@@ -1,0 +1,13 @@
+node_modules/
+.env
+*.env
+html/
+backups/
+.vite/
+vouchers/
+vendor/
+*.log
+*.pdf
+tmp/
+*.csv
+processed/

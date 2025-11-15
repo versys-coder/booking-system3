@@ -1,0 +1,94 @@
+/* Корневые стили (как в оригинале) */
+.heatmap-root--professional {
+  font-family: var(--theme-font-family, "Inter", "Helvetica Neue", Arial, sans-serif);
+  color: #0f2431;
+  --accent: #2369d6;
+  --muted: #6b7a86;
+  --surface: #fff;
+}
+
+.heatmap-panel {
+  background: var(--surface);
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(8, 24, 40, 0.06);
+  padding: 18px 16px;
+  margin: 0 auto 28px;
+  max-width: 1200px;
+  position: relative;
+  border: 1px solid rgba(15,36,49,0.04);
+}
+
+/* Обёртка для горизонтального скролла сетки */
+.heatmap-grid-wrapper {
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+/* Шапка часов: первая колонка под дату + 15 часов (07..21) */
+.heatmap-hours-row {
+  display: grid;
+  grid-template-columns: 120px repeat(15, minmax(48px, 1fr));
+  gap: 6px 6px;
+  align-items: end;
+  margin-bottom: 8px;
+}
+.heatmap-date-col-spacer {
+  width: 120px;
+}
+.heatmap-hour-label {
+  text-align: center;
+  color: #185a90;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+/* Основная сетка: строки по датам */
+.heatmap-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Строка: колонка даты + 15 клеток часов */
+.heatmap-row {
+  display: grid;
+  grid-template-columns: 120px auto;
+  gap: 6px;
+  align-items: center;
+}
+
+/* Левая колонка с датой */
+.heatmap-date-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 4px 8px;
+  color: #133d61;
+  font-weight: 800;
+}
+.heatmap-date-main { font-size: 14px; line-height: 1.05; }
+.heatmap-date-sub  { font-size: 12px; color: #8aa4b9; font-weight: 600; line-height: 1; }
+
+/* Клетки часов: 15 столбцов */
+.heatmap-cells {
+  display: grid;
+  grid-template-columns: repeat(15, minmax(48px, 1fr));
+  gap: 6px;
+}
+
+/* САМОЕ ВАЖНОЕ: высота клеток — без этого их не видно */
+.heatmap-cell {
+  height: 42px;
+  border-radius: 10px;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.7) inset, 0 2px 4px rgba(8,24,40,0.05);
+}
+
+/* Перерыв */
+.heatmap-cell--break {
+  background: #f2f6fa;
+  color: #185a90;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

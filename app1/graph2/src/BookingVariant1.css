@@ -1,0 +1,268 @@
+.booking-variant1-row {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+  width: 100%;
+  min-height: 1px; /* или min-height: 100%; если родитель ограничен */
+  box-sizing: border-box;
+}
+.booking-variant1-chart,
+.booking-variant1-side {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-height: 0;
+}
+.booking-variant1-side {
+  flex: 0 1 30%;
+  max-width: 30%;
+  min-width: 240px;
+  background: #fff;
+  border-radius: 24px;
+  padding: 32px 24px;
+  margin-top: 0px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: none !important;
+  padding-top: 24px;
+  padding-bottom: 18px;
+}
+.booking-form-placeholder {
+  color: #185a90;
+  font-family: 'Roboto Condensed', Arial, sans-serif;
+  text-align: center;
+}
+.booking-form-placeholder h3 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+.booking-form-placeholder p {
+  font-size: 1.15rem;
+  color: #3c40af;
+}
+/* === PoolWorkload1 styles === */
+.poolworkload-root {
+  position: relative;
+  font-size: 16px;
+  background: #f5faff;
+  width: 100%;
+  min-height: 420px;
+  padding: 0;
+  box-shadow: none;
+}
+.poolworkload-card {
+  background: #fff;
+  border-radius: 22px;
+  box-shadow: 0 6px 24px #185a9020;
+  padding: 0 0 8px 0;
+  position: relative;
+  width: 100%;
+}
+.poolworkload-dates-row {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 6px 0;
+  padding: 14px 0 0 12px;
+  flex-wrap: wrap;
+}
+.poolworkload-date {
+  display: flex;
+  align-items: center;
+  gap: 0 10px;
+  cursor: pointer;
+  padding: 2px 7px 2px 2px;
+  border-radius: 12px;
+  background: transparent;
+  transition: background 0.18s;
+  min-width: 0;
+}
+.poolworkload-date-active {
+  background: #ffffff;
+}
+.poolworkload-date-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #8cd7fa;
+  border: 2.5px solid #d5f0fa;
+  margin-right: 2px;
+  box-shadow: 0 0 0 4px #f5faff;
+  flex-shrink: 0;
+}
+.poolworkload-date:not(.poolworkload-date-active) .poolworkload-date-dot {
+  background: #3886b5;
+  border: 2px solid #e4eaf1;
+  box-shadow: none;
+}
+.poolworkload-date-labels {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.08;
+  min-width: 0;
+}
+.poolworkload-date-main {
+  font-size: 15px;
+  font-weight: 700;
+  color: #185a90;
+  line-height: 1.04;
+  white-space: nowrap;
+}
+.poolworkload-date-weekday {
+  font-size: 13px;
+  color: #b2c6d8;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+.poolworkload-date-active .poolworkload-date-main {
+  font-size: 16px;
+  font-weight: 800;
+  color: #185a90;
+}
+.poolworkload-date-active .poolworkload-date-weekday {
+  color: #185a90;
+  font-weight: 700;
+}
+.poolworkload-chart-title {
+  text-align: center;
+  font-size: 18px;
+  color: #185a90;
+  font-weight: 900;
+  margin: 0 0 4px 0;
+  letter-spacing: .01em;
+}
+.poolworkload-chart-scroll {
+  position: relative;
+  min-width: 100%;
+  overflow-x: auto;
+  border-radius: inherit;
+}
+.poolworkload-chart-container {
+  position: relative;
+}
+.poolworkload-equalizer {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.poolworkload-break-text {
+  font-weight: 700;
+  fill: #185a90;
+  font-size: 12px;
+}
+.poolworkload-chart-overlay {
+  position: absolute;
+  left: 0; top: 0;
+  width: 100%;
+  pointer-events: none;
+}
+.poolworkload-chart-overlay-col {
+  position: absolute;
+  pointer-events: auto;
+  background: transparent;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+.poolworkload-popup-wrapper {
+  position: absolute;
+  transform: translate(-50%, 0);
+  z-index: 120;
+  transition: left 140ms cubic-bezier(.2,.9,.2,1), top 140ms cubic-bezier(.2,.9,.2,1), opacity 120ms;
+  pointer-events: none;
+}
+.poolworkload-popup {
+  width: 140px;
+  min-height: 70px;
+  background: #fff;
+  border-radius: 13px;
+  box-shadow: 0 4px 18px rgba(24,90,144,0.15);
+  border: 1.5px solid #eaf1f8;
+  padding: 7px 10px 6px 10px;
+  font-weight: 700;
+  color: #183a58;
+  text-align: center;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.1;
+  position: relative;
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.poolworkload-popup-time {
+  font-size: 12px;
+  color: #185a90;
+  font-weight: 800;
+  margin-bottom: 2px;
+}
+.poolworkload-popup-lanes {
+  font-size: 18px;
+  font-weight: 900;
+  color: #181a1b;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+.poolworkload-popup-lanes span {
+  font-size: 11px;
+  margin-left: 3px;
+  color: #185a90;
+  font-weight: 700;
+}
+.poolworkload-popup-places {
+  margin-top: 1px;
+  font-size: 10px;
+  color: #4b6b88;
+}
+.poolworkload-popup-break {
+  font-size: 13px;
+  font-weight: 800;
+  color: #185a90;
+  margin: 6px 0;
+  writing-mode: vertical-rl;
+  letter-spacing: 0.1em;
+}
+.poolworkload-popup-price {
+  margin-top: 5px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #185a90;
+}
+.poolworkload-popup-price span {
+  font-size: 10px;
+  color: #888;
+  font-weight: 500;
+  margin-left: 2px;
+}
+.poolworkload-popup-arrow {
+  position: absolute;
+  left: 50%;
+  bottom: -9px;
+  transform: translateX(-50%);
+  width: 18px;
+  height: 12px;
+  z-index: 1;
+  overflow: visible;
+  pointer-events: none;
+}
+@media (max-width: 1100px) {
+  .booking-variant1-row {
+    flex-direction: column;
+    gap: 32px;
+  }
+  .booking-variant1-chart,
+  .booking-variant1-side {
+    max-width: 100%;
+    width: 100%;
+  }
+  .poolworkload-card {
+    border-radius: 14px;
+  }
+  .poolworkload-dates-row {
+    padding-left: 4px;
+  }
+}

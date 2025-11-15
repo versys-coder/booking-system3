@@ -1,0 +1,164 @@
+/* ============================= */
+/*        Общие переменные       */
+/* ============================= */
+:root {
+  /* Индикаторы */
+  --indicator-count: 3;
+  --indicator-card-width: 187px;
+  --indicator-card-padding: 8px;
+  --indicator-card-radius: 14px;
+  /* Добавлена прозрачность (например, 85%) */
+  --indicator-card-bg: rgba(190,190,190,0.20);
+  /*--indicator-card-shadow: 0 8px 32px 0 rgba(188, 188, 188, 0.16);*/
+
+  --indicator-label-color: #094a7c;
+  --indicator-label-font: 700 19px 'Roboto Condensed', Arial, sans-serif;
+
+  --indicator-value-color: #3C40AF;
+  --indicator-value-font: 700 35px 'Roboto Condensed', Arial, sans-serif;
+
+  --indicator-desc-color: #6e7a87;
+  --indicator-desc-font: 400 14px 'Roboto Condensed', Arial, sans-serif;
+
+  /* Табы */
+  --tabs-gap: 28px;
+  --tab-radius: 28px;
+  --tab-padding: 10px 28px;
+  --tab-font-size: 1rem;
+  --tab-bg: #e9ecf2;
+  --tab-color: #6e7a87;
+  --tab-bg-active: #8d9fa9;
+  --tab-color-active: #2c4351;
+}
+
+/* ============================= */
+/*        Индикаторы             */
+/* ============================= */
+.pool-indicators-row {
+  display: flex;
+  gap: 28px;
+  justify-content: flex-start;
+  margin-bottom: 38px;
+  align-items: flex-start;
+  width: auto;
+  max-width: none;
+  padding: 0 16px;
+  box-sizing: border-box;
+}
+.pool-indicator-card {
+  background: var(--indicator-card-bg) !important;
+  box-shadow: var(--indicator-card-shadow);
+  border-radius: var(--indicator-card-radius);
+  width: var(--indicator-card-width);
+  padding: var(--indicator-card-padding);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin: 0 10px;
+  box-sizing: border-box;
+}
+.pool-indicator-label {
+  color: var(--indicator-label-color);
+  font: var(--indicator-label-font);
+  margin-bottom: 8px;
+  text-align: center;
+}
+.pool-indicator-value {
+  color: var(--indicator-value-color);
+  font: var(--indicator-value-font);
+  margin-bottom: 6px;
+  text-align: center;
+}
+.pool-indicator-desc {
+  color: var(--indicator-desc-color);
+  font: var(--indicator-desc-font);
+  margin-top: 8px;
+  text-align: center;
+}
+
+/* ============================= */
+/*        Табы                    */
+/* ============================= */
+.pool-tabs {
+  display: flex;
+  width: 100%;
+  justify-content: flex-end; /* или flex-start/flex-end/center по желанию */
+  align-items: stretch;    /* выравнивание кнопок по высоте */
+  gap: 40px;               /* увеличь пробел между табами */
+  margin-bottom: 30px;
+}
+
+.pool-tab-button {
+  font-family: 'Roboto Condensed', Arial, sans-serif;
+  background: var(--tab-bg);
+  color: var(--tab-color);
+  border: none;
+  border-radius: var(--tab-radius);
+  padding: var(--tab-padding);
+  font-size: var(--tab-font-size);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background .18s, color .18s, box-shadow .18s;
+  outline: none;
+  box-shadow: none;
+  text-transform: uppercase;
+  line-height: 1.1;
+}
+.pool-tab-button.active {
+  background: var(--tab-bg-active);
+  color: var(--tab-color-active);
+  box-shadow: 0 6px 28px 0 rgba(2,159,251,0.12);
+}
+
+/* ============================= */
+/*        Booking area           */
+/* ============================= */
+.pool-booking-area {
+  margin-top: 24px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 0 16px;
+  box-sizing: border-box;
+}
+
+/* ============================= */
+/*        Variant placeholder    */
+/* ============================= */
+.booking-variant {
+  width: 100%;
+  max-width: 1200px;
+  background: transparent;
+  border-radius: 12px;
+  padding: 24px;
+  box-sizing: border-box;
+}
+.booking-variant h2 {
+  color: #185a90;
+  font-family: 'Roboto Condensed', Arial, sans-serif;
+  font-size: 2.6rem;
+  font-weight: 700;
+  margin: 32px 0 24px 0;
+}
+.booking-variant p {
+  color: #185a90;
+  opacity: 0.92;
+  font-family: 'Roboto Condensed', Arial, sans-serif;
+  font-size: 1.6rem;
+  margin-top: 18px;
+}
+
+/* ============================= */
+/*        Responsive tweaks      */
+/* ============================= */
+@media (max-width: 1100px) {
+  .pool-tabs { gap: 16px; margin: 20px 0; }
+  .pool-tab-button { padding: 8px 18px; font-size: 0.95rem; }
+  .pool-indicators-row { gap: 16px; }
+  .pool-indicator-card { width: 140px; padding: 8px; }
+}
+@media (max-width: 800px) {
+  .pool-indicators-row { flex-direction: column; align-items: center; gap: 12px; }
+  .pool-tab-button { padding: 8px 12px; font-size: 0.9rem; }
+}

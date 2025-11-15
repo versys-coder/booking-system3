@@ -1,0 +1,1 @@
+export { default as PoolHistogram } from "./src/PoolHistogram";
