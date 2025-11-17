@@ -1,0 +1,251 @@
+/* Полностью переписанный pool-indicator.css
+   - Вся вёрстка резистентна к внешним стилям (важные правила !important)
+   - Все основные константы вынесены в :root
+   - Подключение шрифтов с woff2/woff fallback (абсолютные URL)
+   - Гарантированная горизонтальная раскладка (desktop) и аккуратный стек (mobile)
+   - Переменная --pw-offset-top контролирует отступ контейнера от верхнего края фрейма
+   - Рекомендация: добавить preload-шрифтов в head итогового dist/index.html и включить CORS на сервере шрифтов
+*/
+
+/* -------------------- FONTS -------------------- */
+/* Указаны оба формата: woff2 (первый) и woff (фоллбэк).
+   Если у вас другой реальный путь — поправьте URL.
+*/
+@font-face {
+  font-family: "Bebas Neue";
+  src: url("https://price.dvvs-ekb.ru/spt-priem/fonts/bebas-neue/BebasNeue-Regular.woff2") format("woff2"),
+       url("https://price.dvvs-ekb.ru/spt-priem/fonts/bebas-neue/BebasNeue-Regular.woff") format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Bebas Neue";
+  src: url("https://price.dvvs-ekb.ru/spt-priem/fonts/bebas-neue/BebasNeue%20Bold.woff2") format("woff2"),
+       url("https://price.dvvs-ekb.ru/spt-priem/fonts/bebas-neue/BebasNeue%20Bold.woff") format("woff");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* -------------------- VARIABLES (константы) -------------------- */
+:root {
+  /* Основные параметры — меняйте тут */
+  --pw-card-height: 420px;       /* высота карточки с контентом */
+  --pw-offset-top: 18px;        /* отступ от верхнего края фрейма */
+  --pw-bg-r: 4;
+  --pw-bg-g: 22;
+  --pw-bg-b: 25;
+  --pw-bg-opacity: 0.72;        /* уровень затемнения фона карточки */
+  --pw-bg: rgba(var(--pw-bg-r), var(--pw-bg-g), var(--pw-bg-b), var(--pw-bg-opacity));
+  --pw-text: #ffffff;
+  --pw-muted: rgba(255,255,255,0.88);
+  --pw-accent-start: #c85bff;
+  --pw-accent-end: #6b6bff;
+  --pw-accent: linear-gradient(90deg,var(--pw-accent-start) 0%, var(--pw-accent-end) 100%);
+  --pw-radius: 18px;
+  --pw-gap: 14px;               /* gap между колонками */
+  --pw-divider: rgba(255,255,255,0.10);
+  --pw-base-rem: 16px;          /* базовый rem, меняет масштаб шрифтов */
+}
+
+/* Установим базовый размер для rem внутри виджета */
+html, :root { font-size: var(--pw-base-rem); }
+
+/* -------------------- OUTER & CARD -------------------- */
+/* outer высота = card + offset: это надёжно при любых значениях offset */
+.pw-embed-outer {
+  display: flex !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+  padding-top: var(--pw-offset-top) !important; /* верхний отступ внутри фрейма */
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+  padding-bottom: 8px !important;
+  height: calc(var(--pw-card-height) + var(--pw-offset-top)) !important;
+  overflow: visible !important;
+  align-items: flex-start !important;
+}
+
+/* Карточка — фиксированная высота, чистая структура */
+.pw-embed-card {
+  width: 100% !important;
+  max-width: 420px !important;
+  height: var(--pw-card-height) !important;
+  background: var(--pw-bg) !important;
+  border-radius: var(--pw-radius) !important;
+  color: var(--pw-text) !important;
+  box-sizing: border-box !important;
+  padding: 1.05rem 0.8rem 0.6rem 0.8rem !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 1rem !important;
+  position: relative !important;
+  overflow: hidden !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+}
+
+/* -------------------- TITLE -------------------- */
+.pw-title-center {
+  text-align: center !important;
+  font-family: "Bebas Neue", Arial, sans-serif !important;
+  font-size: 1.45rem !important; /* ~23px при 16px base */
+  font-weight: 700 !important;
+  color: var(--pw-text) !important;
+  line-height: 1.02 !important;
+  margin: 0 !important;
+  letter-spacing: 0.02em !important;
+  text-transform: none !important;
+}
+
+/* -------------------- VALUES ROW (КОЛОНКИ) -------------------- */
+/* Primary: flex row forced with !important (устойчиво к внешним стилям).
+   Also set grid fallback in case host removes flex (both present for maximum resilience). */
+.pw-values-row {
+  width: 100% !important;
+  display: flex !important;                 /* primary enforcement */
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: var(--pw-gap) !important;
+  position: relative !important;
+  min-width: 0 !important;
+  margin-bottom: 0.25rem !important;
+}
+
+/* vertical divider */
+.pw-values-row::before {
+  content: "" !important;
+  position: absolute !important;
+  left: 50% !important;
+  top: 12% !important;
+  bottom: 12% !important;
+  width: 1px !important;
+  background: var(--pw-divider) !important;
+  transform: translateX(-0.5px) !important;
+  pointer-events: none !important;
+  z-index: 1 !important;
+  border-radius: 1px !important;
+}
+
+/* Column blocks — force 50/50 split */
+.pw-values-row > .pw-col-block,
+.pw-embed-card > .pw-col-block {
+  flex: 0 0 calc(50% - (var(--pw-gap) / 2)) !important;
+  min-width: 72px !important;
+  box-sizing: border-box !important;
+  padding: 0.12rem 0.25rem !important;
+  z-index: 2 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+}
+
+/* -------------------- NUMBERS & LABELS -------------------- */
+/* Force Bebas on numbers; keep fallback fonts just in case */
+.pw-col-num {
+  font-family: "Bebas Neue", Arial, sans-serif !important;
+  font-size: 1.95rem !important; /* ~31px */
+  font-weight: 700 !important;
+  color: var(--pw-text) !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  margin: 0 !important;
+}
+
+/* labels under numbers */
+.pw-col-label {
+  font-family: Arial, sans-serif !important;
+  font-size: 0.94rem !important;
+  color: var(--pw-muted) !important;
+  margin-top: 0.12rem !important;
+  line-height: 1.12 !important;
+}
+
+/* -------------------- BUTTON -------------------- */
+.pw-footer {
+  width: 100% !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  padding-bottom: 0 !important;
+}
+
+.pw-book-btn {
+  background: var(--pw-accent) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 28px !important;
+  padding: 0.66rem 1.5rem !important;
+  font-size: 1.05rem !important;
+  cursor: pointer !important;
+  font-family: "Bebas Neue", Arial, sans-serif !important;
+  font-weight: 700 !important;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.20) !important;
+  display: inline-block !important;
+  z-index: 999 !important;
+  line-height: 1 !important;
+}
+
+/* -------------------- WHEEL IFRAME (если показывается) -------------------- */
+.pw-wheel-iframe {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  border: 0 !important;
+  background: transparent !important;
+  min-height: 0 !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+/* -------------------- Responsive -------------------- */
+@media (max-width: 520px) {
+  :root { --pw-gap: 10px; }
+  .pw-embed-card { padding: 0.9rem 0.6rem 0.6rem 0.6rem !important; }
+  .pw-title-center { font-size: 1.15rem !important; }
+  .pw-col-num { font-size: 1.4rem !important; }
+  .pw-col-label { font-size: 0.92rem !important; }
+  .pw-book-btn { font-size: 0.98rem !important; padding: 0.56rem 1.2rem !important; }
+}
+
+/* very narrow screens: stack vertically */
+@media (max-width: 340px) {
+  .pw-values-row {
+    display: block !important;
+  }
+  .pw-values-row::before { display: none !important; }
+  .pw-values-row > .pw-col-block {
+    flex: 0 0 100% !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    padding: 6px 8px !important;
+  }
+  .pw-col-num { font-size: 1.2rem !important; }
+  .pw-title-center { font-size: 1rem !important; }
+  .pw-book-btn { width: 100% !important; padding: 0.6rem 1rem !important; }
+}
+
+/* -------------------- Defensive debug helpers -------------------- */
+/* Если у хоста есть глобальные !important правила, временно можно включить этот блок
+   чтобы "обнулить" нежелательные глобальные влияния (РАЗБЛОКИРОВАТЬ ТОЛЬКО ДЛЯ ДЕБАГА):
+
+:root, .pw-embed-outer, .pw-embed-card, .pw-values-row, .pw-col-block, .pw-col-num, .pw-book-btn {
+  all: unset !important;
+  box-sizing: border-box !important;
+}
+*/
+
+/* -------------------- Notes --------------------
+ - Для более быстрой загрузки шрифтов добавьте в <head> итогового dist/index.html:
+   <link rel="preload" href="https://price.dvvs-ekb.ru/spt-priem/fonts/bebas-neue/BebasNeue-Regular.woff2" as="font" type="font/woff2" crossorigin>
+   <link rel="preload" href="https://price.dvvs-ekb.ru/spt-priem/fonts/bebas-neue/BebasNeue%20Bold.woff" as="font" type="font/woff" crossorigin>
+ - Если Bebas не отображается: откройте DevTools → Network → Font и проверьте статус (200/404) и заголовки.
+ - Для кросс-доменных шрифтов сервер должен отдавать Access-Control-Allow-Origin: * (или ваш домен).
+ - Если внешний сайт всё равно перебивает display, используйте DevTools → Elements → Styles, найдите правило и пришлите скрин — допишу точечный override.
+*/

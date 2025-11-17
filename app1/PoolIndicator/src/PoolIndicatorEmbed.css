@@ -1,0 +1,198 @@
+/* Pool indicator | Bebas applied, robust row layout, vertical divider, --pw-bg-opacity as darkness constant */
+
+/* Подключение шрифта с абсолютным URL (гарантия) */
+@font-face {
+  font-family: "Bebas Neue";
+  src: url("https://price.dvvs-ekb.ru/spt-priem/fonts/bebas-neue/BebasNeue-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Bebas Neue";
+  src: url("https://price.dvvs-ekb.ru/spt-priem/fonts/bebas-neue/BebasNeue%20Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --pw-bg-r: 4;
+  --pw-bg-g: 22;
+  --pw-bg-b: 25;
+  --pw-bg-opacity: 0.72;
+  --pw-bg: rgba(var(--pw-bg-r), var(--pw-bg-g), var(--pw-bg-b), var(--pw-bg-opacity));
+  --pw-text: #fff;
+  --pw-muted: rgba(255,255,255,0.85);
+  --pw-accent: linear-gradient(90deg,#c85bff 0%, #6b6bff 100%);
+  --pw-radius: 20px;
+  --pw-padding: 26px;
+  --pw-card-width: 720px;
+  --pw-gap: 24px;
+}
+
+/* Главная оболочка */
+.pw-embed-outer {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 0 12px;
+  overflow: visible !important;
+}
+.pw-embed-card {
+  width: 100%;
+  max-width: var(--pw-card-width);
+  background: var(--pw-bg);
+  border-radius: var(--pw-radius);
+  color: var(--pw-text);
+  box-sizing: border-box;
+  padding: var(--pw-padding);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  position: relative;
+  min-height: 100%;
+  overflow: visible !important;
+}
+
+/* Заголовок */
+.pw-title-center {
+  text-align: center;
+  font-family: "Bebas Neue", Arial, sans-serif !important;
+  font-size: 34px;
+  font-weight: 700;
+  color: var(--pw-text);
+  line-height: 1.02;
+}
+
+/* --- Значения: горизонтальный ряд с divider --- */
+.pw-values-row {
+  position: relative;
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  width: 100%;
+  max-width: 640px;
+  justify-content: center;
+  align-items: center;
+  gap: var(--pw-gap);
+  box-sizing: border-box;
+  padding: 0;
+  min-height: 1px;
+}
+.pw-values-row::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  transform: translateX(-0.5px);
+  top: 13%;
+  bottom: 13%;
+  width: 1px;
+  background: rgba(255,255,255,0.15);
+  pointer-events: none;
+  border-radius: 1px;
+}
+
+/* Колонки: flex + min-width, предотвращают наложение */
+.pw-values-row > .pw-col-block {
+  flex: 0 0 calc(50% - (var(--pw-gap) / 2));
+  box-sizing: border-box;
+  padding: 18px 12px;
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 130px;
+}
+
+/* Fallback (rare case): если колонки лягут прямо в .pw-embed-card */
+.pw-embed-card > .pw-col-block {
+  float: left !important;
+  width: calc(50% - (var(--pw-gap) / 2)) !important;
+  min-width: 130px !important;
+  box-sizing: border-box !important;
+  padding: 18px 12px !important;
+}
+
+/* clear floats */
+.pw-embed-card::after { content: ""; display: block; clear: both; }
+
+/* ---- Числа Bebas ---- */
+.pw-col-num {
+  font-family: "Bebas Neue", Arial, sans-serif !important;
+  font-size: 40px;
+  font-weight: 700;
+  color: var(--pw-text);
+  margin-bottom: 6px;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap !important;
+}
+
+/* подписи */
+.pw-col-label {
+  font-family: Arial, sans-serif;
+  font-size: 18px;
+  color: var(--pw-muted);
+  text-align: center;
+  white-space: normal;
+  line-height: 1.18;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Footer + кнопка */
+.pw-footer {
+  width: 100%;
+  display: flex !important;
+  justify-content: center;
+  align-items: center;
+  padding-bottom: 8px;
+  box-sizing: border-box;
+  z-index: 99;
+  visibility: visible !important;
+  clear: both;
+}
+.pw-book-btn {
+  background: var(--pw-accent);
+  color: #fff;
+  border: none;
+  border-radius: 28px;
+  padding: 12px 36px;
+  font-size: 18px;
+  cursor: pointer;
+  font-family: "Bebas Neue", Arial, sans-serif !important;
+  font-weight: 700;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.25);
+  display: inline-block !important;
+  visibility: visible !important;
+}
+
+/* iframe wheel */
+.pw-wheel-iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: transparent;
+}
+
+/* --- Responsive: мобильный: в колонку, divider убирается --- */
+@media (max-width: 640px) {
+  .pw-values-row {
+    flex-direction: column !important;
+    gap: 10px;
+  }
+  .pw-values-row::before { display: none; }
+  .pw-values-row > .pw-col-block,
+  .pw-embed-card > .pw-col-block {
+    float: none !important;
+    width: 100% !important;
+    padding: 12px 8px !important;
+  }
+  .pw-col-num { font-size: 32px; }
+  .pw-title-center { font-size: 26px; }
+  .pw-book-btn { font-size: 16px; padding: 10px 26px; }
+}
