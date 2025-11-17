@@ -1,5 +1,5 @@
 {
-  "extends": "../tsconfig.base.json",
+  "extends": "../graph/tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./dist",
     "types": ["react", "react-dom", "vite/client"]
