@@ -1,221 +1,188 @@
-import React, { useEffect, useRef, useState } from "react";
-// Импорт компонента Индикатора из PoolIndicator
-import Indicator from "../../PoolIndicator/src/PoolIndicatorEmbed";
-// Импорт PoolWheelWidget (основное "колесо") из wheel
-import PoolWheel from "../../wheel/src/PoolWheelWidgetEmbed";
+import '../../wheel/src/styles.css';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import './styles.css';
 
-// Локальные формы (можно заменить на свои продвинутые позже)
-import PhoneForm from "./components/PhoneForm";
-import SmsForm from "./components/SmsForm";
-import Success from "./components/Success";
+import PoolIndicatorEmbed from '../../PoolIndicator/src/PoolIndicatorEmbed';
+import PoolWheelWidgetEmbed from '../../wheel/src/PoolWheelWidgetEmbed';
+import PhoneForm from './components/PhoneForm';
+import SmsForm from './components/SmsForm';
+import Success from './components/Success';
 
-export type SelectedSlot = { start_date: string; pool?: string } | null;
-type Step = "indicator" | "wheel" | "phone" | "sms" | "success";
+type Step = 1 | 2 | 3 | 4 | 5;
 
-/**
- * WizardApp — основной SPA компонент.
- *
- * Добавлена поддержка встраивания (embed):
- * - если приложение загружено в iframe, оно будет публиковать высоту контента в parent
- *   через window.parent.postMessage({ type: 'dvvs:wizard:height', height: <px> }, '*')
- * - приложение читает query-параметры (mode, bg, font, panel, color и т.п.) и может
- *   применять простые вариации отображения.
- * - также слушает сообщения от parent с type = 'dvvs:parent:setTheme' для динамического
- *   управления параметрами из родителя.
- *
- * Это минимальная, безопасная реализация — расширяй под свои нужды.
- */
-export default function WizardApp(): JSX.Element {
-  const [step, setStep] = useState<Step>("indicator");
-  const [slot, setSlot] = useState<SelectedSlot>(null);
-  const [phone, setPhone] = useState<string>("");
-  const [bookingResult, setBookingResult] = useState<any | null>(null);
-
-  // embed-related state
-  const rootRef = useRef<HTMLDivElement | null>(null);
-  const resizeObserverRef = useRef<ResizeObserver | null>(null);
-
-  // visual options from query
-  const [embedOptions] = useState(() => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      return {
-        mode: params.get("mode") || undefined,
-        bg: params.get("bg") || undefined,
-        font: params.get("font") || undefined,
-        panel: params.get("panel") || undefined,
-        color: params.get("color") || undefined,
-        // add more params as needed
-      };
-    } catch (e) {
-      return {};
-    }
-  });
-
-  function goToWheel() {
-    setStep("wheel");
+function readEmbedConfigFromUrl() {
+  try {
+    const sp = new URLSearchParams(window.location.search);
+    const modeParam = sp.get("mode") || sp.get("layout");
+    const bg = (sp.get("bg") || sp.get("background") || "").toLowerCase();
+    const mode: "minimal" | "compact" = modeParam === "compact" ? "compact" : "minimal";
+    const transparentBg = bg === "transparent" || bg === "none" || sp.get("noBg") === "1";
+    const font = (sp.get("font") || "").toLowerCase();
+    const panel = (sp.get("panel") ?? (mode === "compact" ? "1" : "0")) !== "0";
+    const color = (sp.get("color") || "#ffffff").replace("#", "");
+    const cardHeight = sp.get("cardHeight") || undefined;
+    const height = sp.get("height") || undefined;
+    return { mode, transparentBg, font, panel, color, cardHeight, height };
+  } catch (e) {
+    return { mode: "minimal", transparentBg: false, font: "", panel: true, color: "ffffff", cardHeight: undefined, height: undefined };
   }
-  function onSlotSelected(s: SelectedSlot) {
-    setSlot(s);
-    setStep("phone");
-  }
-  function onPhoneSubmitted(ph: string) {
-    setPhone(ph);
-    setStep("sms");
-  }
-  function onBookingComplete(res: any) {
-    setBookingResult(res);
-    setStep("success");
-  }
-  function restart() {
-    setSlot(null);
-    setPhone("");
-    setBookingResult(null);
-    setStep("indicator");
-  }
+}
 
-  // Send height message to parent (for embed iframe auto-resize)
-  function postHeightToParent() {
-    try {
-      if (!rootRef.current) return;
-      const el = rootRef.current;
-      // Measure the content height. Use scrollHeight to capture full content.
-      const height = Math.ceil(el.scrollHeight || el.offsetHeight || 480);
-      // Parent embed code expects message.type === 'dvvs:wheels:height' or similar.
-      // We use 'dvvs:wizard:height' (parent can adapt), and also include a generic key.
-      const payload = { type: "dvvs:wizard:height", height };
-      // postMessage targetOrigin '*' is used so parent can filter by origin itself.
-      // Parent embed script typically checks e.origin === ALLOWED_ORIGIN.
-      if (window.parent && window.parent !== window) {
-        window.parent.postMessage(payload, "*");
-      }
-    } catch (e) {
-      // ignore
-    }
-  }
+const WizardApp: React.FC = () => {
+  const urlCfg = useMemo(() => readEmbedConfigFromUrl(), []);
+  const [step, setStep] = useState<Step>(1);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedHour, setSelectedHour] = useState<number | null>(null);
+  const [phone, setPhone] = useState('');
+  const [client, setClient] = useState<any>(null);
 
   useEffect(() => {
-    // Send initial height once mounted (defer to next tick so DOM is painted)
-    const t0 = setTimeout(postHeightToParent, 80);
-
-    // Setup ResizeObserver to notify parent about size changes
-    if (rootRef.current && typeof ResizeObserver !== "undefined") {
-      resizeObserverRef.current = new ResizeObserver(() => {
-        postHeightToParent();
-      });
-      resizeObserverRef.current.observe(rootRef.current);
-    } else {
-      // Fallback: listen to window resize
-      const onWinResize = () => postHeightToParent();
-      window.addEventListener("resize", onWinResize);
-      // cleanup will remove it
-      // store cleanup reference via resizeObserverRef.current === null flag
-      resizeObserverRef.current = null;
+    if (selectedDate && selectedHour != null) {
+      try {
+        localStorage.setItem('pw:selectedStart', `${selectedDate}T${String(selectedHour).padStart(2,'0')}:00:00`);
+      } catch {}
     }
+  }, [selectedDate, selectedHour]);
 
-    // Message listener from parent
-    function onMessage(e: MessageEvent) {
-      // If you want stricter security, check e.origin here:
-      // if (e.origin !== "https://price.dvvs-ekb.ru") return;
+  useEffect(() => {
+    const onMessage = (ev: MessageEvent) => {
+      if (!ev.data || typeof ev.data !== 'object') return;
+      const { type, payload } = ev.data as any;
 
-      const data = e.data;
-      if (!data || typeof data !== "object") return;
-
-      // parent can request a height update
-      if (data && (data.type === "dvvs:parent:requestHeight" || data.type === "dvvs:request:height")) {
-        postHeightToParent();
+      if (type === 'dvvs:openBooking' && payload) {
+        if (payload.start) {
+          const dt = new Date(payload.start);
+          if (!isNaN(dt.getTime())) {
+            setSelectedDate(dt.toISOString().slice(0,10));
+            setSelectedHour(dt.getHours());
+            setStep(3);
+            return;
+          }
+        }
+        setStep(2);
+        return;
       }
 
-      // parent can set theme / small customizations dynamically
-      if (data && data.type === "dvvs:parent:setTheme" && data.theme) {
-        // example: data.theme = { bg: '#fff', color: '#000' }
-        Object.keys(data.theme).forEach((k) => {
-          try {
-            // set CSS variables on root for simple theming
-            (document.documentElement.style as any).setProperty(`--embed-${k}`, data.theme[k]);
-          } catch (err) {}
-        });
-        // After applying theme, re-send height (if layout changed)
-        setTimeout(postHeightToParent, 80);
-      }
-    }
-    window.addEventListener("message", onMessage, false);
-
-    return () => {
-      clearTimeout(t0);
-      if (resizeObserverRef.current) {
+      if (type === 'pw:openWheel' && (ev as any).data && (ev as any).data.href) {
         try {
-          resizeObserverRef.current.disconnect();
-        } catch (e) {}
-      } else {
-        window.removeEventListener("resize", postHeightToParent);
+          const href = (ev as any).data.href as string;
+          const url = new URL(href, window.location.href);
+          const start = url.searchParams.get('start');
+          if (start) {
+            const dt = new Date(start);
+            if (!isNaN(dt.getTime())) {
+              setSelectedDate(dt.toISOString().slice(0,10));
+              setSelectedHour(dt.getHours());
+              setStep(3);
+              return;
+            }
+          }
+        } catch (e) { /* ignore */ }
+        setStep(2);
+        return;
       }
-      window.removeEventListener("message", onMessage, false);
+
+      if (type === 'dvvs:booking:success' && payload && payload.client) {
+        setClient(payload.client);
+        setStep(5);
+      }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
   }, []);
 
-  // Whenever visible content changes, inform parent
-  useEffect(() => {
-    // small delay so DOM updates settle
-    const t = setTimeout(postHeightToParent, 60);
-    return () => clearTimeout(t);
-  }, [step, slot, phone, bookingResult]);
-
-  // Apply embed options (simple example: change background when bg=transparent)
-  useEffect(() => {
-    if (!embedOptions) return;
-    if (embedOptions.bg === "transparent") {
-      // ensure root background is transparent
-      if (rootRef.current) {
-        rootRef.current.style.background = "transparent";
+  const handleOpenWheel = useCallback((href: string) => {
+    try {
+      const url = new URL(href, window.location.href);
+      const start = url.searchParams.get('start');
+      if (start) {
+        const dt = new Date(start);
+        if (!isNaN(dt.getTime())) {
+          setSelectedDate(dt.toISOString().slice(0,10));
+          setSelectedHour(dt.getHours());
+          setStep(3);
+          return;
+        }
       }
-      document.documentElement.style.setProperty("--embed-bg", "transparent");
-    }
-    if (embedOptions.color) {
-      document.documentElement.style.setProperty("--embed-color", `#${embedOptions.color.replace(/^#/, "")}`);
-    }
-    if (embedOptions.font) {
-      // optional: load a font or set className to apply font family if you ship fonts
-      document.documentElement.setAttribute("data-embed-font", embedOptions.font);
-    }
-    // Notify parent after applying styles
-    setTimeout(postHeightToParent, 60);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    } catch (e) { /* ignore */ }
+    setStep(2);
   }, []);
+
+  const handleSlotSelected = useCallback((dateIso: string, hour: number) => {
+    setSelectedDate(dateIso);
+    setSelectedHour(hour);
+    try { localStorage.setItem('pw:selectedStart', `${dateIso}T${String(hour).padStart(2,'0')}:00:00`); } catch {}
+    setStep(3);
+  }, []);
+
+  const isWheelStep = step === 2;
+  const containerStyle: React.CSSProperties = isWheelStep
+    ? { width: '100%', maxWidth: 980, margin: '0 auto' }
+    : { maxWidth: 640, margin: '0 auto' };
 
   return (
-    <div ref={rootRef} className="wiz-root" style={{ background: undefined }}>
-      {step === "indicator" && <Indicator onBook={goToWheel} />}
+    <div className="wiz-root">
+      <div className="wiz-container" style={containerStyle}>
+        {step === 1 && (
+          <div className="indicator-wrapper">
+            <PoolIndicatorEmbed
+              onOpenWheel={handleOpenWheel}
+              width="100%"
+              // pass url-driven values so iframe embed responds to query params
+              height={urlCfg.height}
+              cardHeight={urlCfg.cardHeight}
+              bg={urlCfg.transparentBg ? "transparent" : undefined}
+              panel={urlCfg.panel}
+              font={urlCfg.font}
+              color={urlCfg.color}
+            />
+          </div>
+        )}
 
-      {step === "wheel" && (
-        <PoolWheel
-          onBack={() => setStep("indicator")}
-          onSelectSlot={(s) => onSlotSelected(s)}
-        />
-      )}
+        {step === 2 && (
+          <PoolWheelWidgetEmbed
+            mode={urlCfg.mode}
+            font={urlCfg.font}
+            panel={urlCfg.panel}
+            transparentBg={urlCfg.transparentBg}
+            color={"#" + (urlCfg.color || "ffffff")}
+            onSelectSlot={handleSlotSelected}
+          />
+        )}
 
-      {step === "phone" && slot && (
-        <PhoneForm
-          slot={slot}
-          initialPhone={phone}
-          onBack={() => setStep("wheel")}
-          onSubmit={(ph) => onPhoneSubmitted(ph)}
-        />
-      )}
+        {step === 3 && (
+          <PhoneForm
+            value={phone}
+            onChange={setPhone}
+            onSubmit={() => setStep(4)}
+            onBack={() => setStep(2)}
+          />
+        )}
 
-      {step === "sms" && slot && (
-        <SmsForm
-          slot={slot}
-          phone={phone}
-          onBack={() => setStep("phone")}
-          onComplete={(res) => onBookingComplete(res)}
-        />
-      )}
+        {step === 4 && (
+          <SmsForm
+            phone={phone}
+            onSuccess={(clientData) => { setClient(clientData); setStep(5); }}
+            onBack={() => setStep(3)}
+          />
+        )}
 
-      {step === "success" && bookingResult && (
-        <Success result={bookingResult} onClose={restart} />
-      )}
+        {step === 5 && (
+          <Success
+            client={client}
+            onNewBooking={() => {
+              setStep(1);
+              setClient(null);
+              setPhone('');
+              setSelectedDate(null);
+              setSelectedHour(null);
+            }}
+          />
+        )}
+      </div>
     </div>
   );
-}
+};
+
+export default WizardApp;

@@ -1,8 +1,92 @@
-:root { --bg:#07172a; --accent: linear-gradient(90deg,#b95bf0,#6f73ff); --text:#fff; --muted: rgba(255,255,255,0.6); }
-body, html, #root { height:100%; margin:0; font-family: Inter, Arial, sans-serif; background: transparent; color: var(--text); }
-.wiz-root { padding: 18px; max-width: 980px; margin: 0 auto; }
-.primary { background: var(--accent); color: white; border: 0; padding: 12px 26px; border-radius: 28px; font-weight: 700; cursor: pointer; }
-.link { background: transparent; border: 0; color: var(--muted); cursor: pointer; }
-.input { padding: 10px 12px; border-radius: 8px; width: 260px; font-size: 16px; }
-.error { color: #ffb4b4; }
-.slot-line { color: var(--muted); margin-top: 8px; margin-bottom: 8px; }
+:root{
+  --bg: #07172a;
+  --accent: linear-gradient(90deg,#b95bf0,#6f73ff);
+  --text: #ffffff;
+  --muted: rgba(255,255,255,0.6);
+  --wiz-max-width: 980px;
+}
+
+/* Scoped wizard root */
+.wiz-root{
+  box-sizing: border-box;
+  font-family: Inter, Arial, sans-serif;
+  color: var(--text);
+  padding: 0 !important;
+  margin: 0 auto;
+  max-width: var(--wiz-max-width);
+  width: 100%;
+  background: transparent !important;
+}
+
+/* inner container used by WizardApp (center) */
+.wiz-root .wiz-container{
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0;
+  background: transparent !important;
+}
+
+/* basic wizard controls */
+.wiz-root .primary{ background: var(--accent); color:#fff; padding:12px 26px; border-radius:28px; font-weight:700; border:0; }
+.wiz-root .link{ background:transparent; border:0; color:var(--muted); cursor:pointer; }
+.wiz-root .input{ padding:10px 12px; border-radius:8px; width:260px; font-size:16px; box-sizing:border-box; }
+
+/* Indicator wrapper: precise target for overrides */
+.wiz-root .indicator-wrapper{
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto 8px auto;
+  background: transparent !important;
+}
+
+/* Remove white outer frame and ensure outer is transparent (scoped, no wildcard) */
+.wiz-root .indicator-wrapper > .pw-embed-outer {
+  background: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+  border: 0 !important;
+  width: 100% !important;
+  height: 120px !important;
+  min-height: 0 !important;
+}
+
+/* Inner dark card adjustments (reduced padding/min-height) */
+.wiz-root .indicator-wrapper .pw-embed-card{
+  background: rgba(52,61,62,0.96) !important;
+  padding: 12px 14px !important;
+  min-height: 220px !important;
+  border-radius: 16px !important;
+  box-shadow: 0 6px 22px rgba(0,0,0,0.06) !important;
+  box-sizing: border-box !important;
+}
+
+/* tighten inner gaps and sizes */
+.wiz-root .indicator-wrapper .pw-values-row { gap: 10px !important; }
+.wiz-root .indicator-wrapper .pw-headline { font-size: 20px !important; margin-bottom: 6px !important; }
+.wiz-root .indicator-wrapper .pw-col-num { font-size: 28px !important; line-height:1 !important; }
+.wiz-root .indicator-wrapper .pw-col-label { font-size: 14px !important; }
+
+/* Ensure book button gradient is present and sized */
+.wiz-root .indicator-wrapper .pw-book-btn {
+  background: linear-gradient(90deg,#b54cff,#7f59ff) !important;
+  color: #fff !important;
+  border: none !important;
+  padding: 10px 18px !important;
+  font-size: 18px !important;
+  border-radius: 18px !important;
+  box-shadow: 0 8px 24px -6px rgba(43,128,186,0.35) !important;
+}
+
+/* wheel/card tweaks (compact) */
+.wiz-root .pw-wheel-card { padding: 12px 10px !important; border-radius: 20px !important; box-sizing: border-box; }
+.wiz-root .pw-root { max-width: 100% !important; box-sizing: border-box !important; }
+
+/* responsive */
+@media (max-width:720px) {
+  .wiz-root{ padding:12px; }
+  .wiz-root .indicator-wrapper .pw-embed-card{ min-height: 200px !important; padding: 10px !important; }
+  .wiz-root .indicator-wrapper .pw-headline{ font-size:18px !important; }
+  .wiz-root .indicator-wrapper .pw-book-btn{ padding:10px 14px !important; font-size:16px !important; }
+}

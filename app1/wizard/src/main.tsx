@@ -1,10 +1,11 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
-import WizardApp from "./WizardApp";
-import "./styles.css";
+import '../../wheel/src/styles.css';
+import './styles.css';
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <WizardApp />
-  </React.StrictMode>
-);
+import React from "react";
+import { createRoot } from 'react-dom/client';
+import WizardApp from './WizardApp';
+
+const root = document.getElementById('root');
+if (root) {
+  createRoot(root).render(<WizardApp />);
+}
