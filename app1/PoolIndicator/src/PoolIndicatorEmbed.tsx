@@ -2,12 +2,35 @@ import React, { useEffect, useRef, useState } from "react";
 import "./pool-indicator.css";
 
 /**
- * PoolIndicatorEmbed — hardened version
- * - inserts strong local css similar to Wheel embed
- * - applies inline styles with !important where necessary
- * - listens for postMessage { type: 'dvvs:embedConfig' }
- * - reports height via postMessage { type: 'dvvs:wizard:height', height }
+ * PoolIndicatorEmbed — hardened version (rewritten)
+ *
+ * Changes vs original:
+ * - applyConfig accepts extended payload fields (inlineBg, bgOpacity, bgR/bgG/bgB, offsetTop)
+ * - applyConfig always writes inline styles with "important" to beat host CSS
+ * - ensures document.body/documentElement inside iframe are transparent
+ * - neutralizes parent wrappers up to a few levels
+ * - retries applying config (interval + MutationObserver) to survive DOM mutations
+ * - listens for postMessage dvvs:embedConfig and replies with dvvs:embedConfigApplied
+ * - reports height via dvvs:wizard:height (ResizeObserver + polling)
+ * - keeps previous behavior: reads URL params and props on mount
  */
+
+type ConfigPayload = {
+  cardHeight?: string;
+  height?: string;
+  minHeight?: string;
+  bg?: string;
+  panel?: boolean;
+  color?: string;
+  // extended fields
+  inlineBg?: string;        // explicit rgba string, e.g. 'rgba(4,22,25,0.72)'
+  bgOpacity?: number;       // 0..1
+  bgR?: number;
+  bgG?: number;
+  bgB?: number;
+  offsetTop?: number;       // px
+};
+
 type Props = {
   apiBase?: string;
   poolName?: string;
@@ -47,7 +70,6 @@ export default function PoolIndicatorEmbed(props: Props) {
   const [available, setAvailable] = useState<number | null>(null);
   const [temp, setTemp] = useState<number | null>(null);
 
-  // Inline CSS (scoped for this embed) — modeled after Wheel embed rules
   const embeddedCss = `
     /* force transparent backgrounds and reset paddings that may create frame */
     html, body, #root, .wiz-root, .pw-embed-root, .pw-embed-outer {
@@ -76,7 +98,6 @@ export default function PoolIndicatorEmbed(props: Props) {
     .pw-embed-card { background: var(--pw-bg, rgba(10,10,10,0.8)) !important; box-shadow: none !important; border: 0 !important; }
   `;
 
-  // read params from url
   function readParamsFromUrl() {
     try {
       const sp = new URLSearchParams(window.location.search);
@@ -88,13 +109,19 @@ export default function PoolIndicatorEmbed(props: Props) {
         panel: sp.get("panel") === "0" ? false : sp.get("panel") === "1" ? true : undefined,
         font: sp.get("font") || undefined,
         color: sp.get("color") || undefined,
-      };
+        // extended values that may be passed via URL
+        bgOpacity: sp.get("bg_opacity") ? Number(sp.get("bg_opacity")) : undefined,
+        bgR: sp.get("bg_r") ? Number(sp.get("bg_r")) : undefined,
+        bgG: sp.get("bg_g") ? Number(sp.get("bg_g")) : undefined,
+        bgB: sp.get("bg_b") ? Number(sp.get("bg_b")) : undefined,
+        offsetTop: sp.get("offsetTop") ? Number(sp.get("offsetTop")) : undefined,
+      } as any;
     } catch (e) {
-      return {};
+      return {} as any;
     }
   }
 
-  // fetch API values (same logic as before)
+  // simple fetch helpers (try multiple bases)
   useEffect(() => {
     let mounted = true;
     const apiBaseCandidates = apiBase ? [apiBase.replace(/\/+$/, "")] : ["", "/catalog/api-backend", "/catalog/api-backend/api"];
@@ -127,19 +154,33 @@ export default function PoolIndicatorEmbed(props: Props) {
     return () => { mounted = false; clearInterval(id); };
   }, [apiBase, poolName, updateMs]);
 
-  // central apply function: sets inline styles with important and injects extra style node
-  function applyConfig(cfg: { cardHeight?: string; height?: string; minHeight?: string; bg?: string; panel?: boolean; color?: string; }) {
+  // centralized function that applies config robustly (inline + important)
+  function applyConfig(cfgRaw: Partial<ConfigPayload> = {}) {
+    const cfg: ConfigPayload = { ...(cfgRaw as ConfigPayload) };
+
     const outer = outerRef.current;
     const card = cardRef.current;
+
     function setImportant(el: HTMLElement | null, prop: string, value: string) {
       try { el?.style.setProperty(prop, value, "important"); } catch (e) {}
     }
 
-    // apply on outer/card
+    // ensure body/html transparent
+    try {
+      if (typeof document !== "undefined") {
+        try { document.documentElement.style.setProperty("background", "transparent", "important"); } catch (e) {}
+        try { document.documentElement.style.setProperty("background-color", "transparent", "important"); } catch (e) {}
+        try { document.body && document.body.style.setProperty("background", "transparent", "important"); } catch (e) {}
+        try { document.body && document.body.style.setProperty("background-color", "transparent", "important"); } catch (e) {}
+      }
+    } catch (e) {}
+
+    // apply dimensions and variables on outer/card
     if (outer) {
       if (cfg.height) setImportant(outer, "height", cfg.height);
       if (cfg.minHeight) setImportant(outer, "min-height", cfg.minHeight);
       if (cfg.cardHeight) setImportant(outer, "--pw-card-height", cfg.cardHeight);
+      if (typeof cfg.offsetTop !== "undefined") setImportant(outer, "padding-top", `${cfg.offsetTop}px`);
       if (cfg.color) {
         setImportant(outer, "--color-primary", cfg.color);
         setImportant(outer, "--color-primary-strong", cfg.color);
@@ -150,28 +191,51 @@ export default function PoolIndicatorEmbed(props: Props) {
         setImportant(outer, "background-color", "transparent");
       }
     }
+
     if (card) {
       if (cfg.cardHeight) setImportant(card, "--pw-card-height", cfg.cardHeight);
       if (cfg.minHeight) setImportant(card, "min-height", cfg.minHeight);
       setImportant(card, "padding", "12px 14px");
     }
 
-    // climb parents inside iframe and neutralize panels (wiz-root, wiz-container, panel, paper)
+    // build explicit bg string: prefer inlineBg, else bgR/bgG/bgB/bgOpacity, else fallback to CSS var
+    let bgString: string | null = null;
+    if (cfg.inlineBg) {
+      bgString = cfg.inlineBg;
+    } else if (typeof cfg.bgR === "number" && typeof cfg.bgG === "number" && typeof cfg.bgB === "number") {
+      const opacity = typeof cfg.bgOpacity === "number" ? cfg.bgOpacity : 0.72;
+      bgString = `rgba(${cfg.bgR},${cfg.bgG},${cfg.bgB},${opacity})`;
+    } else if (typeof cfg.bgOpacity === "number") {
+      bgString = `rgba(4,22,25,${cfg.bgOpacity})`;
+    }
+
+    // force apply card background inline (important) if we have a bgString
+    if (card) {
+      if (bgString) {
+        setImportant(card, "background", bgString);
+        setImportant(card, "background-color", bgString);
+        setImportant(card, "--pw-bg", bgString);
+        setImportant(card, "--pw-bg-opacity", String(cfg.bgOpacity ?? 0.72));
+      } else {
+        // ensure at least variable-based background is used
+        setImportant(card, "background", "var(--pw-bg, rgba(4,22,25,0.72))");
+      }
+    }
+
+    // neutralize parents up to 8 levels to avoid wrapper backgrounds/shadows
     try {
-      let el: HTMLElement | null = outer || card || null;
+      let el: HTMLElement | null = card || outer || null;
       let depth = 0;
       while (el && depth < 8) {
         const parent = el.parentElement;
         if (!parent) break;
-        // stop at body/html
         if (parent.tagName.toLowerCase() === "body" || parent.tagName.toLowerCase() === "html") break;
         setImportant(parent, "background", "transparent");
         setImportant(parent, "background-color", "transparent");
         setImportant(parent, "box-shadow", "none");
-        setImportant(parent, "border", "0px");
-        setImportant(parent, "padding", "0px");
-        setImportant(parent, "margin", "0px");
-        if (cfg.cardHeight) setImportant(parent, "--pw-card-height", cfg.cardHeight);
+        setImportant(parent, "border", "0");
+        setImportant(parent, "padding", "0");
+        setImportant(parent, "margin", "0");
         el = parent;
         depth++;
       }
@@ -179,16 +243,15 @@ export default function PoolIndicatorEmbed(props: Props) {
       // ignore
     }
 
-    // inject style to neutralize pseudo-elements and enforce transparent variables locally
+    // inject small style node to cover pseudo-elements and enforce variables for the root selector
     try {
       const id = "pw-indicator-local-reset";
-      let st = document.getElementById(id) as HTMLStyleElement | null;
       const rootSel = outer ? (outer.id ? `#${outer.id}` : ".pw-embed-outer") : ".pw-embed-outer";
       const txt = `
-/* auto-generated reset for pool-indicator embed */
 ${rootSel}, ${rootSel} * { background: transparent !important; background-image: none !important; box-shadow: none !important; border: 0 !important; --theme-page-bg: transparent !important; --color-bg-page: transparent !important; }
 ${rootSel}::before, ${rootSel}::after, ${rootSel} *::before, ${rootSel} *::after { content: none !important; display: none !important; background: transparent !important; }
 `;
+      let st = document.getElementById(id) as HTMLStyleElement | null;
       if (!st) {
         st = document.createElement("style");
         st.id = id;
@@ -200,28 +263,34 @@ ${rootSel}::before, ${rootSel}::after, ${rootSel} *::before, ${rootSel} *::after
     } catch (e) {}
   }
 
-  // apply config on mount from props / url and with retries
+  // apply initial config from props + url and keep retrying to survive DOM mutations
   useEffect(() => {
-    const urlCfg = readParamsFromUrl();
-    const cfg = {
+    const urlCfg = readParamsFromUrl() as any;
+    const cfg: Partial<ConfigPayload> = {
       height: propHeight ?? urlCfg.height,
       cardHeight: propCardHeight ?? urlCfg.cardHeight,
       minHeight: propMinHeight ?? urlCfg.minHeight,
       bg: propBg ?? urlCfg.bg,
       panel: typeof propPanel === "boolean" ? propPanel : urlCfg.panel,
       color: propColor ?? urlCfg.color,
+      bgOpacity: urlCfg.bgOpacity,
+      bgR: urlCfg.bgR,
+      bgG: urlCfg.bgG,
+      bgB: urlCfg.bgB,
+      offsetTop: urlCfg.offsetTop,
     };
-    // immediate apply + repeated attempts to survive widget DOM mutations
-    applyConfig(cfg);
+
+    // immediate application + repeated attempts
+    applyConfig(cfg as Partial<ConfigPayload>);
     let attempts = 0;
-    const maxAttempts = 8;
+    const maxAttempts = 12;
     const t = setInterval(() => {
       attempts++;
-      applyConfig(cfg);
+      applyConfig(cfg as Partial<ConfigPayload>);
       if (attempts >= maxAttempts) clearInterval(t);
     }, 300);
 
-    const mo = new MutationObserver(() => applyConfig(cfg));
+    const mo = new MutationObserver(() => applyConfig(cfg as Partial<ConfigPayload>));
     mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["style", "class"] });
 
     return () => {
@@ -231,33 +300,43 @@ ${rootSel}::before, ${rootSel}::after, ${rootSel} *::before, ${rootSel} *::after
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [propHeight, propCardHeight, propMinHeight, propBg, propPanel, propFont, propColor, width]);
 
-  // listen for postMessage config from parent
+  // postMessage listener: accept dvvs:embedConfig with extended payload and reply ack
   useEffect(() => {
     function onMsg(e: MessageEvent) {
       try {
         const data = e.data;
         if (!data || typeof data !== "object") return;
         if (data.type === "dvvs:embedConfig" && data.payload) {
-          const p = data.payload;
-          applyConfig({
+          const p: any = data.payload;
+          // normalize payload types
+          const payload: Partial<ConfigPayload> = {
             cardHeight: p.cardHeight,
             height: p.height,
             minHeight: p.minHeight,
             bg: p.bg,
             panel: p.panel,
             color: p.color,
-          });
+            inlineBg: p.inlineBg,
+            bgOpacity: typeof p.bgOpacity === "number" ? p.bgOpacity : (p.bgOpacity ? Number(p.bgOpacity) : undefined),
+            bgR: typeof p.bgR === "number" ? p.bgR : (p.bgR ? Number(p.bgR) : undefined),
+            bgG: typeof p.bgG === "number" ? p.bgG : (p.bgG ? Number(p.bgG) : undefined),
+            bgB: typeof p.bgB === "number" ? p.bgB : (p.bgB ? Number(p.bgB) : undefined),
+            offsetTop: typeof p.offsetTop === "number" ? p.offsetTop : (p.offsetTop ? Number(p.offsetTop) : undefined),
+          };
+          applyConfig(payload);
+          // try to reply to source (ack)
           try { e.source?.postMessage?.({ type: "dvvs:embedConfigApplied", payload: { ok: true } }, e.origin || "*"); } catch (err) {}
         }
-      } catch (err) { /* ignore */ }
+      } catch (err) {
+        // ignore
+      }
     }
     window.addEventListener("message", onMsg, false);
     return () => window.removeEventListener("message", onMsg);
   }, []);
 
-  // report height to parent (use ResizeObserver and polling fallback)
+  // report height to parent (ResizeObserver + polling fallback)
   useEffect(() => {
-    const card = cardRef.current;
     function reportHeight() {
       try {
         const el = cardRef.current || outerRef.current;
@@ -287,7 +366,6 @@ ${rootSel}::before, ${rootSel}::after, ${rootSel} *::before, ${rootSel} *::after
 
   return (
     <div className="pw-embed-root" style={{ width }}>
-      {/* Inject local strong CSS to neutralize host-like effects inside this frame */}
       <style>{embeddedCss}</style>
 
       <div className="pw-embed-outer" ref={outerRef} style={{ width, ...(propHeight ? { height: propHeight } : {}) }}>

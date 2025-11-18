@@ -32,11 +32,11 @@
 :root {
   /* Основные параметры — меняйте тут */
   --pw-card-height: 420px;       /* высота карточки с контентом */
-  --pw-offset-top: 18px;        /* отступ от верхнего края фрейма */
+  --pw-offset-top: 38px;        /* отступ от верхнего края фрейма */
   --pw-bg-r: 4;
   --pw-bg-g: 22;
   --pw-bg-b: 25;
-  --pw-bg-opacity: 0.72;        /* уровень затемнения фона карточки */
+  --pw-bg-opacity: 0.12;        /* уровень затемнения фона карточки */
   --pw-bg: rgba(var(--pw-bg-r), var(--pw-bg-g), var(--pw-bg-b), var(--pw-bg-opacity));
   --pw-text: #ffffff;
   --pw-muted: rgba(255,255,255,0.88);
