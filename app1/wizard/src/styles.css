@@ -1,0 +1,8 @@
+:root { --bg:#07172a; --accent: linear-gradient(90deg,#b95bf0,#6f73ff); --text:#fff; --muted: rgba(255,255,255,0.6); }
+body, html, #root { height:100%; margin:0; font-family: Inter, Arial, sans-serif; background: transparent; color: var(--text); }
+.wiz-root { padding: 18px; max-width: 980px; margin: 0 auto; }
+.primary { background: var(--accent); color: white; border: 0; padding: 12px 26px; border-radius: 28px; font-weight: 700; cursor: pointer; }
+.link { background: transparent; border: 0; color: var(--muted); cursor: pointer; }
+.input { padding: 10px 12px; border-radius: 8px; width: 260px; font-size: 16px; }
+.error { color: #ffb4b4; }
+.slot-line { color: var(--muted); margin-top: 8px; margin-bottom: 8px; }
