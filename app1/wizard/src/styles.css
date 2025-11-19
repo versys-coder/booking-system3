@@ -1,4 +1,4 @@
-:root{
+:root {
   --bg: #07172a;
   --accent: linear-gradient(90deg,#b95bf0,#6f73ff);
   --text: #ffffff;
@@ -6,8 +6,8 @@
   --wiz-max-width: 980px;
 }
 
-/* Scoped wizard root */
-.wiz-root{
+/* Wizard root */
+.wiz-root {
   box-sizing: border-box;
   font-family: Inter, Arial, sans-serif;
   color: var(--text);
@@ -18,8 +18,8 @@
   background: transparent !important;
 }
 
-/* inner container used by WizardApp (center) */
-.wiz-root .wiz-container{
+/* inner container */
+.wiz-root .wiz-container {
   margin: 0 auto;
   width: 100%;
   box-sizing: border-box;
@@ -27,20 +27,38 @@
   background: transparent !important;
 }
 
-/* basic wizard controls */
-.wiz-root .primary{ background: var(--accent); color:#fff; padding:12px 26px; border-radius:28px; font-weight:700; border:0; }
-.wiz-root .link{ background:transparent; border:0; color:var(--muted); cursor:pointer; }
-.wiz-root .input{ padding:10px 12px; border-radius:8px; width:260px; font-size:16px; box-sizing:border-box; }
+/* buttons + inputs */
+.wiz-root .primary {
+  background: var(--accent);
+  color:#fff;
+  padding:12px 26px;
+  border-radius:28px;
+  font-weight:700;
+  border:0;
+}
+.wiz-root .link {
+  background:transparent;
+  border:0;
+  color:var(--muted);
+  cursor:pointer;
+}
+.wiz-root .input {
+  padding:10px 12px;
+  border-radius:8px;
+  width:260px;
+  font-size:16px;
+  box-sizing:border-box;
+}
 
-/* Indicator wrapper: precise target for overrides */
-.wiz-root .indicator-wrapper{
+/* Indicator wrapper */
+.wiz-root .indicator-wrapper {
   width: 100%;
   max-width: 640px;
   margin: 0 auto 8px auto;
   background: transparent !important;
 }
 
-/* Remove white outer frame and ensure outer is transparent (scoped, no wildcard) */
+/* remove white container */
 .wiz-root .indicator-wrapper > .pw-embed-outer {
   background: transparent !important;
   padding: 0 !important;
@@ -52,23 +70,60 @@
   min-height: 0 !important;
 }
 
-/* Inner dark card adjustments (reduced padding/min-height) */
-.wiz-root .indicator-wrapper .pw-embed-card{
-  background: rgba(52,61,62,0.96) !important;
+/* dark card */
+.wiz-root .indicator-wrapper .pw-embed-card {
+  background: rgba(52,61,62,0.46) !important;
   padding: 12px 14px !important;
   min-height: 220px !important;
   border-radius: 16px !important;
   box-shadow: 0 6px 22px rgba(0,0,0,0.06) !important;
   box-sizing: border-box !important;
+  opacity: var(--wiz-opacity, 1) !important;
+}
+.wiz-root .indicator-wrapper .pw-embed-card * {
+  opacity: inherit !important;
 }
 
-/* tighten inner gaps and sizes */
-.wiz-root .indicator-wrapper .pw-values-row { gap: 10px !important; }
-.wiz-root .indicator-wrapper .pw-headline { font-size: 20px !important; margin-bottom: 6px !important; }
-.wiz-root .indicator-wrapper .pw-col-num { font-size: 28px !important; line-height:1 !important; }
-.wiz-root .indicator-wrapper .pw-col-label { font-size: 14px !important; }
+/* VALUES ROW — FIX! позволяет переносить строки */
+.wiz-root .indicator-wrapper .pw-values-row {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: wrap !important;     /* ПОЗВОЛЯЕМ ПЕРЕНОС */
+  justify-content: space-between !important;
+  gap: 10px !important;
+  width: 100% !important;
+}
 
-/* Ensure book button gradient is present and sized */
+/* COLUMN — делаем уже, чтобы текст ломался */
+.wiz-root .indicator-wrapper .pw-col {
+  flex: 1 1 100px !important;
+  max-width: 120px !important;     /* ГАРАНТ ПЕРЕНОСА */
+  text-align: center !important;
+}
+
+/* headline */
+.wiz-root .indicator-wrapper .pw-headline {
+  font-size: 20px !important;
+  margin-bottom: 6px !important;
+}
+
+/* numbers */
+.wiz-root .indicator-wrapper .pw-col-num {
+  font-size: 28px !important;
+  line-height: 1 !important;
+}
+
+/* LABELS — главный фикс для переносов */
+.wiz-root .indicator-wrapper .pw-col-label {
+  white-space: normal !important;       /* разрешаем перенос */
+  word-break: break-word !important;    /* ломаем длинные слова */
+  display: block !important;
+  line-height: 1.1 !important;
+  text-align: center !important;
+  max-width: 80px !important;           /* гарантирует 2 строки */
+}
+
+/* book button */
 .wiz-root .indicator-wrapper .pw-book-btn {
   background: linear-gradient(90deg,#b54cff,#7f59ff) !important;
   color: #fff !important;
@@ -79,14 +134,30 @@
   box-shadow: 0 8px 24px -6px rgba(43,128,186,0.35) !important;
 }
 
-/* wheel/card tweaks (compact) */
-.wiz-root .pw-wheel-card { padding: 12px 10px !important; border-radius: 20px !important; box-sizing: border-box; }
-.wiz-root .pw-root { max-width: 100% !important; box-sizing: border-box !important; }
+/* wheel tweaks */
+.wiz-root .pw-wheel-card {
+  padding: 12px 10px !important;
+  border-radius: 20px !important;
+  box-sizing: border-box;
+}
+
+.wiz-root .pw-root {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
 
 /* responsive */
 @media (max-width:720px) {
-  .wiz-root{ padding:12px; }
-  .wiz-root .indicator-wrapper .pw-embed-card{ min-height: 200px !important; padding: 10px !important; }
-  .wiz-root .indicator-wrapper .pw-headline{ font-size:18px !important; }
-  .wiz-root .indicator-wrapper .pw-book-btn{ padding:10px 14px !important; font-size:16px !important; }
+  .wiz-root { padding:12px; }
+  .wiz-root .indicator-wrapper .pw-embed-card {
+    min-height: 200px !important;
+    padding: 10px !important;
+  }
+  .wiz-root .indicator-wrapper .pw-headline {
+    font-size:18px !important;
+  }
+  .wiz-root .indicator-wrapper .pw-book-btn {
+    padding:10px 14px !important;
+    font-size:16px !important;
+  }
 }

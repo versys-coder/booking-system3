@@ -1,13 +1,11 @@
-import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import "./pool-indicator.css";
 
 // --- DEBUG HELPER --- //
 function getDebugParam() {
   try {
-    return new URLSearchParams(window.location.search).get("pw_debug") === "1";
-  } catch {
-    return false;
-  }
+    return new URLSearchParams(window.location.search).get('pw_debug') === '1';
+  } catch { return false; }
 }
 
 type ConfigPayload = {
@@ -64,36 +62,34 @@ export default function PoolIndicatorEmbed(props: Props) {
   const [available, setAvailable] = useState<number | null>(null);
   const [temp, setTemp] = useState<number | null>(null);
 
-  const debug = useMemo(() => getDebugParam(), []);
+  // --- DEBUG: show fetch/fail log in UI if ?pw_debug=1 --- //
+  const debug = getDebugParam();
   const [log, setLog] = useState<string[]>([]);
-  const logRef = useRef<string[]>([]);
-  const appendLog = useCallback((msg: string) => {
+  const appendLog = (msg: string) => {
     if (!debug) return;
-    const line = `${new Date().toLocaleTimeString()} ${msg}`;
-    // keep an in-ref copy to avoid many re-renders if debug is off (but we short-circuit above)
-    logRef.current = [line, ...logRef.current].slice(0, 40);
-    setLog([...logRef.current]);
-  }, [debug]);
+    setLog(prev => {
+      const n = [`${new Date().toLocaleTimeString()} ${msg}`, ...prev];
+      return n.slice(0, 40);
+    });
+  };
 
-  // candidate bases (same logic, but memoized)
-  const apiBaseCandidates = useMemo(() => {
-    if (apiBase) return [apiBase.replace(/\/+$/, "")];
-    return ["/catalog/api-backend", "/catalog/api-backend/api", ""];
-  }, [apiBase]);
+  // --- BASES --- //
+  // Явное apiBase > рабочее публичное /catalog/api-backend > полный /catalog/api-backend/api > относительный ""
+  const apiBaseCandidates = apiBase
+    ? [apiBase.replace(/\/+$/, "")]
+    : ["/catalog/api-backend", "/catalog/api-backend/api", ""];
 
-  // tryFetch with timeout and abort — memoized so identity stable
-  const tryFetch = useCallback(async (path: string) => {
+  // --- FETCH WITH SHORT TIMEOUT (safe) --- //
+  async function tryFetch(path: string) {
     const FETCH_TIMEOUT = 3000;
     for (const base of apiBaseCandidates) {
       const url = base ? base.replace(/\/+$/, "") + path : path;
       const controller = new AbortController();
       const sig = controller.signal;
-      let timeoutId: number | null = null;
+      let timeoutId: any = null;
       try {
         appendLog(`fetch -> ${url}`);
-        timeoutId = window.setTimeout(() => {
-          try { controller.abort(); } catch { /* ignore */ }
-        }, FETCH_TIMEOUT);
+        timeoutId = setTimeout(() => { try { controller.abort(); } catch {} }, FETCH_TIMEOUT);
         const r = await fetch(url, { cache: "no-store", signal: sig });
         appendLog(`response ${url} -> ${r.status}`);
         if (!r.ok) throw new Error("http " + r.status);
@@ -101,67 +97,38 @@ export default function PoolIndicatorEmbed(props: Props) {
         return { ok: true, json: j };
       } catch (err: any) {
         appendLog(`error ${url} -> ${String(err?.message || err)}`);
-        // small backoff so we don't spin tight on failure
         await new Promise((res) => setTimeout(res, 80));
       } finally {
         if (timeoutId) clearTimeout(timeoutId);
       }
     }
     return { ok: false };
-  }, [apiBaseCandidates, appendLog]);
+  }
 
-  // Use refs to track mounted state and interval id — prevents race conditions
-  const mountedRef = useRef(true);
-  const intervalRef = useRef<number | null>(null);
-
+  // --- LOAD DATA ONCE AND PERIODICALLY --- //
   useEffect(() => {
-    mountedRef.current = true;
+    let mounted = true;
     async function load() {
-      if (!mountedRef.current) return;
+      if (!mounted) return;
       try {
         const cap = await tryFetch("/api/capacity/now");
-        // only update state if value changed (avoid unnecessary re-renders)
-        const newAvailable = (cap.ok && cap.json && typeof cap.json.available !== "undefined")
-          ? Number(cap.json.available)
-          : null;
-        setAvailable(prev => (prev === newAvailable ? prev : newAvailable));
-
+        setAvailable(cap.ok && cap.json && typeof cap.json.available !== "undefined" ? Number(cap.json.available) : null);
         const t = await tryFetch("/api/pools-temps");
-        const newTemp = (t.ok && t.json && t.json[poolName] != null)
-          ? Number(t.json[poolName])
-          : null;
-        setTemp(prev => (prev === newTemp ? prev : newTemp));
-      } catch (e) {
-        // on unexpected error, reset to null only if different
-        setAvailable(prev => (prev === null ? prev : null));
-        setTemp(prev => (prev === null ? prev : null));
+        setTemp(t.ok && t.json && t.json[poolName] != null ? Number(t.json[poolName]) : null);
+      } catch {
+        setAvailable(null);
+        setTemp(null);
       }
     }
+    load();
+    const id = setInterval(load, updateMs);
+    return () => { mounted = false; clearInterval(id); };
+    // eslint-disable-next-line
+  }, [apiBase, poolName, updateMs]);
 
-    // initial load
-    load().catch(() => { /* already logged inside tryFetch */ });
+  // --- applyConfig (стили) оставляем прежними! --- //
 
-    // periodic load — use window.setInterval so we can clear reliably
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    intervalRef.current = window.setInterval(() => {
-      load().catch(() => {});
-    }, Math.max(1000, Number(updateMs) || 30000));
-
-    return () => {
-      mountedRef.current = false;
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
-    // depend on poolName, updateMs, tryFetch
-  }, [poolName, updateMs, tryFetch]);
-
-  // memoize embedded CSS so it's not re-created every render
-  const embeddedCss = useMemo(() => `
+  const embeddedCss = `
     html, body, #root, .wiz-root, .pw-embed-root, .pw-embed-outer {
       margin: 0 !important; padding: 0 !important;
       background: transparent !important; background-color: transparent !important;
@@ -175,8 +142,8 @@ export default function PoolIndicatorEmbed(props: Props) {
       content: none !important; display: none !important; background: transparent !important;
     }
     .pw-embed-outer { box-sizing: border-box !important; }
-    .pw-embed-card { background: var(--pw-bg, rgba(171, 171, 171, 0.8)) !important; box-shadow: none !important; border: 0 !important; }
-  `, []);
+    .pw-embed-card { background: var(--pw-bg, rgba(10,10,10,0.8)) !important; box-shadow: none !important; border: 0 !important; }
+  `;
 
   function openWheel(href: string) {
     try { if (typeof onOpenWheel === "function") { onOpenWheel(href); return; } } catch (e) {}
@@ -190,7 +157,6 @@ export default function PoolIndicatorEmbed(props: Props) {
   return (
     <div className="pw-embed-root" style={{ width }}>
       <style>{embeddedCss}</style>
-
       {debug && (
         <div style={{
           background: "#222", color: "#fff", padding: 8, fontSize: 13, margin: "8px 0",
@@ -198,10 +164,9 @@ export default function PoolIndicatorEmbed(props: Props) {
         }}>
           <div style={{ fontWeight: 600, marginBottom: 5 }}>DEBUG LOG</div>
           {log.map((line, i) => <div key={i}>{line}</div>)}
-          <div style={{ marginTop: 5 }}>available: {String(available)} temp: {String(temp)}</div>
+          <div style={{marginTop:5}}>available: {String(available)} temp: {String(temp)}</div>
         </div>
       )}
-
       <div className="pw-embed-outer" ref={outerRef} style={{ width, ...(propHeight ? { height: propHeight } : {}) }}>
         <div className="pw-embed-card" ref={cardRef} role="region" aria-label="Индикатор бассейна">
           <div className="pw-title-center">Сейчас в тренировочном бассейне</div>
@@ -212,7 +177,7 @@ export default function PoolIndicatorEmbed(props: Props) {
             </div>
             <div className="pw-col-block">
               <div className="pw-col-num">{tempText}</div>
-              <div className="pw-col-label">температура воды</div>
+              <div className="pw-col-label">градуса</div>
             </div>
           </div>
           <div className="pw-footer">
@@ -222,7 +187,7 @@ export default function PoolIndicatorEmbed(props: Props) {
               onClick={() => {
                 appendLog('book button clicked');
                 try { openWheel(wheelSrc); } catch (e) { appendLog('openWheel error: ' + String(e)); }
-                try { window.postMessage({ type: 'pw:openWheel-click', href: wheelSrc }, '*'); } catch (e) { /* ignore */ }
+                try { window.postMessage({ type: 'pw:openWheel-click', href: wheelSrc }, '*'); } catch (e) { }
               }}
               aria-label="Забронировать"
             >

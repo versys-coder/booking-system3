@@ -31,12 +31,12 @@
 /* -------------------- VARIABLES (константы) -------------------- */
 :root {
   /* Основные параметры — меняйте тут */
-  --pw-card-height: 420px;       /* высота карточки с контентом */
-  --pw-offset-top: 18px;        /* отступ от верхнего края фрейма */
+  --pw-card-height: 220px;       /* высота карточки с контентом */
+  --pw-offset-top: 48px;        /* отступ от верхнего края фрейма */
   --pw-bg-r: 4;
   --pw-bg-g: 22;
   --pw-bg-b: 25;
-  --pw-bg-opacity: 0.72;        /* уровень затемнения фона карточки */
+  --pw-bg-opacity: 0.05;        /* уровень затемнения фона карточки */
   --pw-bg: rgba(var(--pw-bg-r), var(--pw-bg-g), var(--pw-bg-b), var(--pw-bg-opacity));
   --pw-text: #ffffff;
   --pw-muted: rgba(255,255,255,0.88);
@@ -249,3 +249,63 @@ html, :root { font-size: var(--pw-base-rem); }
  - Для кросс-доменных шрифтов сервер должен отдавать Access-Control-Allow-Origin: * (или ваш домен).
  - Если внешний сайт всё равно перебивает display, используйте DevTools → Elements → Styles, найдите правило и пришлите скрин — допишу точечный override.
 */
+
+/* --- SUPER OVERRIDE: ломает любые внешние стили хоста --- */
+.pw-values-row {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+}
+
+.pw-values-row > div {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 50% !important;
+    text-align: center !important;
+    white-space: normal !important; /* <- разрешает переносы */
+}
+
+/* Чтобы метки переносились на новую строку */
+.pw-col-label {
+    white-space: normal !important;
+    text-align: center !important;
+}
+
+.wiz-root .indicator-wrapper .pw-values-row {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;      /* ничего не переносим на новую строку */
+    justify-content: center !important;
+    gap: 14px !important;
+    width: 100% !important;
+}
+
+/* === FIX: две колонки 50/50 без сжатия === */
+.wiz-root .indicator-wrapper .pw-values-row > .pw-col-block {
+    flex: 0 0 calc(50% - 7px) !important;
+    min-width: calc(50% - 7px) !important;  /* запрещаем сжимать */
+    max-width: calc(50% - 7px) !important;
+}
+
+/* === FIX: отключаем переносы слов полностью === */
+.wiz-root .indicator-wrapper .pw-values-row .pw-col-block {
+    white-space: normal !important;
+    word-break: keep-all !important;       /* слова не ломаются */
+    overflow-wrap: normal !important;
+}
+
+/* === FIX: значения и заголовки — строго в одну строку === */
+.wiz-root .indicator-wrapper .pw-values-row .pw-col-block .pw-label,
+.wiz-root .indicator-wrapper .pw-values-row .pw-col-block .pw-value {
+    white-space: nowrap !important;        /* условие №1: не переносить */
+    word-break: keep-all !important;       /* условие №2: не рвать слова */
+    overflow-wrap: normal !important;
+}
+
+/* === Дополнительно: если текст всё же длинный, уменьшаем шрифт, но НЕ переносим === */
+.wiz-root .indicator-wrapper .pw-values-row .pw-col-block .pw-label,
+.wiz-root .indicator-wrapper .pw-values-row .pw-col-block .pw-value {
+    font-size: 15px !important;
+}

@@ -14,10 +14,8 @@
     "skipLibCheck": true,
     "strict": true,
     "baseUrl": ".",
-    "paths": {
-      "@/*": ["src/*"]
-    },
-    "types": ["vite/client", "node"]
+    "types": ["vite/client", "node"],
+    "allowImportingTsExtensions": true
   },
   "include": ["src", "index.html", "**/*.ts", "**/*.tsx"],
   "exclude": ["node_modules", "dist"]
