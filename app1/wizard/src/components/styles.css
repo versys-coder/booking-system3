@@ -1,0 +1,48 @@
+/* Transparent panel similar to PoolIndicator */
+.transparent-panel {
+  background: rgba(255,255,255,0.62) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  backdrop-filter: blur(10px) !important;
+  padding: 18px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.6);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+  color: #0f172a;
+}
+
+/* Semi-dark panel for SMS entry (overlay / darker) */
+.semi-dark-panel {
+  background: rgba(0,0,0,0.65) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+  backdrop-filter: blur(6px) !important;
+  padding: 18px;
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.22);
+  color: #ffffff !important;
+}
+
+/* Small helpers */
+.link {
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+}
+.secondary {
+  background: transparent;
+  border: 1px solid rgba(0,0,0,0.08);
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+/* confirmed overlay */
+.confirmed-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.25);
+  pointer-events: none;
+}

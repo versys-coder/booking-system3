@@ -1,12 +1,21 @@
 <!doctype html>
-<html>
+<html lang="ru">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-    <title>Booking Wizard (dev)</title>
+    <title>Booking Wizard</title>
+
+    <!--
+      NOTE:
+      Не задаём здесь window.__PW_API_BASE__ жёстко — оно будет установлено ранним скриптом в src/main.tsx
+      при сборке/старте приложения. Если нужно — можно задать VITE_API_BASE в окружении сборки.
+    -->
   </head>
+
   <body>
     <div id="root"></div>
+
+    <!-- В проде Vite заменит src на собранный файл -->
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

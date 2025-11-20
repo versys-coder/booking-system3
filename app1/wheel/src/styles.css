@@ -450,7 +450,7 @@ body {
   width: 260px;
   min-width: 220px;
   max-width: 280px;
-  background: var(--color-white, #fff);
+  background: var(--pw-bg, rgba(4,22,25,0.72)) !important;
   padding: 20px 16px 24px;
   border-radius: 40px;
   box-shadow: 0 6px 30px rgba(14,56,98,0.08), 0 2px 8px rgba(14,56,98,0.06);

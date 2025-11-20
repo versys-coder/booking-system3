@@ -1,19 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fetchPoolWorkload, PoolWorkloadSlot, PoolWorkloadResponse } from "@app1/api-client/poolWorkload";
-import "./styles.css";
 
 /**
- * PoolWheelWidgetEmbed — wheel used in wizard/embed.
+ * PoolWheelWidgetEmbed
  *
- * Changes:
- * - Defensive enrichment: if no appointment_id present in poolWorkload, probe backend /slots
- *   (single-day -> expanded ±2 days) and enrich slots by matching date|hour via regex parsing.
- * - Deterministic hour parsing via regex only (no new Date fallback) to avoid timezone shifts.
- * - findMatchedSlot updated to use regex parsing for hour and string date compare.
- * - Saves pw:selectedAppointmentId to localStorage when found.
- * - Adds debug probe info in window.__PW_LAST_SLOTS_PROBE__
+ * - unified background handling: uses CSS var --pw-bg for whole-area overlay
+ * - initial bg can be provided via URL params (inlineBg / bg_r/bg_g/bg_b / bg_opacity)
+ * - postMessage listener 'dvvs:embedConfig' can override background at runtime
+ * - explicit typing for URL config to satisfy TypeScript/VSCode
  */
 
+/* ---------- Theme and sizes ---------- */
 type EmbedMode = "minimal" | "compact";
 const THEME_COMPACT = {
   COL_W: 100, GAP: 8, ITEM_H: 36, WINDOW_ROWS: 3,
@@ -32,6 +29,7 @@ const THEME_NORMAL = {
   CARD_PAD_V: 20, CARD_PAD_H: 16,
 } as const;
 
+/* ---------- Date and locale ---------- */
 const HOUR_START = 7, HOUR_END = 21;
 const allHours: number[] = Array.from({ length: HOUR_END - HOUR_START + 1 }, (_, i) => HOUR_START + i);
 const WEEKDAYS_RU = ["ВОСКРЕСЕНЬЕ","ПОНЕДЕЛЬНИК","ВТОРНИК","СРЕДА","ЧЕТВЕРГ","ПЯТНИЦА","СУББОТА"];
@@ -41,19 +39,25 @@ function formatHeaderDate(iso: string) { if (!iso) return ""; const d = new Date
 function formatIsoToDDMM(iso: string) { if (!iso) return ""; const d = new Date(iso); return `${pad2(d.getDate())}.${pad2(d.getMonth()+1)}`; }
 function isBreakHour(dateIso: string | undefined, hour: number) { if (!dateIso) return false; if (hour !== 12) return false; const dow = new Date(dateIso).getDay(); return dow >= 1 && dow <= 5; }
 
+/* ---------- Embed config from query (helper) ---------- */
 type EmbedUrlCfg = {
   mode: EmbedMode;
   transparentBg: boolean;
   font: string;
   panel: boolean;
   color: string;
-  bg_opacity?: number;
-  bgOpacity?: number;
-  bg_r?: number; bgR?: number;
-  bg_g?: number; bgG?: number;
-  bg_b?: number; bgB?: number;
+  // optional extended fields
+  bg_opacity?: number; // also accept snake_case from URL
+  bgOpacity?: number;  // accept camelCase if used
+  bg_r?: number;
+  bg_g?: number;
+  bg_b?: number;
+  bgR?: number;
+  bgG?: number;
+  bgB?: number;
   inlineBg?: string;
 };
+
 function normalizeHexColor(c?: string | null): string | undefined {
   if (!c) return;
   let h = c.replace("#","").trim().toLowerCase();
@@ -61,6 +65,7 @@ function normalizeHexColor(c?: string | null): string | undefined {
   if (h.length===3) h = h.split("").map(ch=>ch+ch).join("");
   return "#"+h;
 }
+
 function readEmbedConfigFromUrl(): EmbedUrlCfg {
   const sp = new URLSearchParams(window.location.search);
   const modeParam = sp.get("mode") || sp.get("layout");
@@ -70,15 +75,18 @@ function readEmbedConfigFromUrl(): EmbedUrlCfg {
   const font = (sp.get("font") || "").toLowerCase();
   const panel = (sp.get("panel") ?? (mode === "compact" ? "1" : "0")) !== "0";
   const color = normalizeHexColor(sp.get("color") || sp.get("text")) || "#ffffff";
+
+  // extended / alternate param names
   const bgOpacity = sp.get("bg_opacity") ? Number(sp.get("bg_opacity")) : (sp.get("bgOpacity") ? Number(sp.get("bgOpacity")) : undefined);
   const bgR = sp.get("bg_r") ? Number(sp.get("bg_r")) : (sp.get("bgR") ? Number(sp.get("bgR")) : undefined);
   const bgG = sp.get("bg_g") ? Number(sp.get("bg_g")) : (sp.get("bgG") ? Number(sp.get("bgG")) : undefined);
   const bgB = sp.get("bg_b") ? Number(sp.get("bg_b")) : (sp.get("bgB") ? Number(sp.get("bgB")) : undefined);
   const inlineBg = sp.get("inlineBg") || sp.get("inlinebg") || undefined;
+
   return { mode, transparentBg, font, panel, color, bg_opacity: bgOpacity, bgOpacity, bg_r: bgR, bg_g: bgG, bg_b: bgB, bgR, bgG, bgB, inlineBg };
 }
 
-/* ---------- Wheel subcomponent (unchanged) ---------- */
+/* ---------- Wheel component (kept lightweight) ---------- */
 interface WheelProps {
   items: (string | number)[];
   activeIndex: number;
@@ -150,7 +158,7 @@ const Wheel: React.FC<WheelProps> = ({
   );
 };
 
-/* ---------- Main component ---------- */
+/* ---------- PoolWheelWidgetEmbed (main) ---------- */
 
 interface Props {
   onSelectSlot?: (dateIso: string, hour: number) => void;
@@ -178,118 +186,28 @@ const PoolWheelWidgetEmbed: React.FC<Props> = ({ onSelectSlot, mode: propMode, f
   }), [urlCfg, propMode, propFont, propPanel, propColor, propTransparent]);
 
   const BEBAS_FACE = cfg.font === "bebas" ? `
-    @font-face { font-family: 'Bebas Neue'; src: url('https://price.dvvs-ekb.ru/spt-priem/fonts/bebas-neue/BebasNeue-Regular.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
-    @font-face { font-family: 'Bebas Neue'; src: url('https://price.dvvs-ekb.ru/spt-priem/fonts/bebas-neue/BebasNeue-Bold.woff2') format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
-  ` : "";
+  @font-face {
+    font-family: 'Bebas Neue';
+    src: url('https://price.dvvs-ekb.ru/spt-priem/fonts/bebas-neue/BebasNeue-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'Bebas Neue';
+    src: url('https://price.dvvs-ekb.ru/spt-priem/fonts/bebas-neue/BebasNeue-Bold.woff2') format('woff2');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+  }` : "";
 
-  // ---------- fetchData: primary workload + enrichment from /slots (debug-enabled) ----------
+  useEffect(()=> { fetchData(); /* eslint-disable-next-line */ }, []);
   const fetchData = useCallback(async () => {
     try {
       setLoading(true); setError(null);
-
-      // Primary source: pool workload (fast UI)
       const res: PoolWorkloadResponse = await fetchPoolWorkload({});
       const loaded = res.slots || [];
-
-      try { (window as any).__PW_LAST_POOLWORKLOAD__ = { ts: new Date().toISOString(), count: Array.isArray(loaded) ? loaded.length : 0 }; } catch(e){}
-
-      // normalize loaded slots to ensure fields: date, hour, start_date, appointment_id maybe missing
-      const normalized = Array.isArray(loaded) ? loaded.map((s: any) => {
-        const start = s.start_date || s.start || "";
-        let date = s.date || "";
-        let hour = s.hour;
-        if (!date && start) date = (start.split("T")[0] || "").split(" ")[0];
-        if ((hour == null || Number.isNaN(Number(hour))) && start) {
-          // extract hour via regex only (avoid Date to prevent TZ shift)
-          const m = start.match(/T?(\d{2}):(\d{2})/);
-          hour = m ? Number(m[1]) : undefined;
-        }
-        return {
-          ...s,
-          date,
-          hour: typeof hour === "number" ? hour : undefined,
-          start_date: start,
-        } as PoolWorkloadSlot & { appointment_id?: string };
-      }) : [];
-
-      try { (window as any).__PW_LAST_NORMALIZED__ = { count: normalized.length, anyHasAppt: normalized.some((s:any)=>!!s.appointment_id) }; } catch(e){}
-
-      const anyHasAppt = normalized.some((s: any) => !!s.appointment_id);
-      const urlParams = new URLSearchParams(window.location.search);
-      const forceProbe = urlParams.get('pw_debug') === '1';
-
-      if (!anyHasAppt || forceProbe) {
-        try {
-          const base = (window as any).__PW_API_BASE__ || "/catalog/api-backend/api";
-          let start_date = "";
-          let end_date = "";
-          const dates = Array.from(new Set(normalized.map((s:any)=>s.date).filter(Boolean))).sort();
-          if (dates.length) {
-            // expand range ±2 days for safety
-            const first = new Date(dates[0]);
-            const last = new Date(dates[dates.length - 1]);
-            first.setDate(first.getDate() - 2);
-            last.setDate(last.getDate() + 2);
-            start_date = first.toISOString().slice(0,10);
-            end_date = last.toISOString().slice(0,10);
-          } else {
-            const now = new Date();
-            start_date = now.toISOString().slice(0,10);
-            const e = new Date(now); e.setDate(e.getDate()+7);
-            end_date = e.toISOString().slice(0,10);
-          }
-
-          const probeFlag = forceProbe ? "&pw_probe=1" : "";
-          const slotsUrl = `${base}/slots?start_date=${encodeURIComponent(start_date)}&end_date=${encodeURIComponent(end_date)}${probeFlag}`;
-
-          const slotsResp = await fetch(slotsUrl, { headers: { Accept: "application/json" } });
-          const txt = await slotsResp.text();
-          let parsed: any = null;
-          try { parsed = txt ? JSON.parse(txt) : null; } catch (e) { parsed = null; }
-          try { (window as any).__PW_LAST_SLOTS_PROBE__ = { url: slotsUrl, status: slotsResp.status, raw: txt?.slice(0,5000) }; } catch(e){}
-
-          const backendSlots = Array.isArray(parsed?.slots) ? parsed.slots : (Array.isArray(parsed) ? parsed : (parsed?.data || []));
-
-          if (Array.isArray(backendSlots) && backendSlots.length) {
-            const index = new Map<string, any>();
-            for (const b of backendSlots) {
-              const sd = b.start_date || b.start || "";
-              if (!sd) continue;
-              const d = sd.split(/[T\s]/)[0] || "";
-              const m = sd.match(/T?(\d{2}):(\d{2})/);
-              const h = m ? Number(m[1]) : undefined;
-              if (d && typeof h === "number") index.set(`${d}|${pad2(h)}`, b);
-              if (b.appointment_id) index.set(String(b.appointment_id), b);
-            }
-            for (const s of normalized) {
-              if (!s.appointment_id && s.start_date) {
-                const d = s.start_date.split(/[T\s]/)[0] || "";
-                const m = s.start_date.match(/T?(\d{2}):(\d{2})/);
-                const h = m ? Number(m[1]) : undefined;
-                const key = `${d}|${pad2(h ?? 0)}`;
-                const matched = index.get(`${d}|${pad2(h ?? 0)}`) || index.get(key);
-                if (matched && (matched.appointment_id || matched.id)) {
-                  s.appointment_id = matched.appointment_id || matched.id;
-                }
-              }
-            }
-            const firstWithAppt = normalized.find((s:any)=>s.appointment_id);
-            if (firstWithAppt && firstWithAppt.appointment_id) {
-              try { localStorage.setItem('pw:selectedAppointmentId', String(firstWithAppt.appointment_id)); } catch(e){}
-              try { (window as any).__PW_LAST_SLOTS_PROBE__.saved = firstWithAppt.appointment_id; } catch(e){}
-              console.info('[PoolWheel] enrichment: saved pw:selectedAppointmentId=', firstWithAppt.appointment_id);
-            }
-          } else {
-            console.info('[PoolWheel] /slots returned no items for range', { start_date, end_date, length: backendSlots?.length ?? 0 });
-          }
-        } catch (e:any) {
-          console.warn('[PoolWheel] enrichment failed', String(e));
-        }
-      } else {
-        try { (window as any).__PW_LAST_SLOTS_PROBE__ = { skipped: true, reason: 'anyHasAppt', normalizedCount: normalized.length }; } catch(e){}
-      }
-
-      setSlots(normalized);
+      setSlots(loaded);
 
       const prev = localStorage.getItem('pw:selectedStart');
       if (prev) {
@@ -298,28 +216,21 @@ const PoolWheelWidgetEmbed: React.FC<Props> = ({ onSelectSlot, mode: propMode, f
           if (!isNaN(dt.getTime())) {
             const dateIso = dt.toISOString().slice(0,10);
             const hour = dt.getHours();
-            const uniqDates = Array.from(new Set(normalized.map(s=>s.date))).sort();
+            const uniqDates = Array.from(new Set(loaded.map(s=>s.date))).sort();
             const idx = uniqDates.indexOf(dateIso);
             if (idx >= 0) setDateIndex(idx);
             setSelectedHour(hour);
           }
         } catch(e){ /* ignore */ }
       }
-      if (!normalized.length) setSelectedHour(null);
-
-    } catch (e:any) {
-      setError(e?.message || "Ошибка загрузки");
-    } finally {
-      setLoading(false);
-    }
+      if (!loaded.length) setSelectedHour(null);
+    } catch (e:any) { setError(e?.message || "Ошибка загрузки"); }
+    finally { setLoading(false); }
   }, []);
 
-  useEffect(()=> { fetchData(); }, [fetchData]);
-
-  // dates / availability derived from normalized slots
-  const dates = useMemo(()=>{ const uniq: string[] = []; for (const s of slots) if (s.date && !uniq.includes(s.date)) uniq.push(s.date); return uniq.sort(); }, [slots]);
+  const dates = useMemo(()=>{ const uniq: string[] = []; for (const s of slots) if (!uniq.includes(s.date)) uniq.push(s.date); return uniq.sort(); }, [slots]);
   const currentDate = dates[dateIndex];
-  const dateHoursSet = useMemo(()=>{ const set = new Set<number>(); slots.forEach(s=> { if (s.date === currentDate && typeof s.hour === "number") set.add(s.hour); }); return set; }, [slots, currentDate]);
+  const dateHoursSet = useMemo(()=>{ const set = new Set<number>(); slots.forEach(s=> { if (s.date === currentDate) set.add(s.hour); }); return set; }, [slots, currentDate]);
 
   useEffect(()=> {
     if (!currentDate) return;
@@ -338,41 +249,25 @@ const PoolWheelWidgetEmbed: React.FC<Props> = ({ onSelectSlot, mode: propMode, f
   const freePlacesItems = useMemo(()=> allHours.map(h => {
     if (!currentDate || isBreakHour(currentDate, h)) return 0;
     const sl = slots.find(s=> s.date === currentDate && s.hour === h);
-    return (sl && (sl.freePlaces ?? sl.available_slots ?? sl.web_capacity ?? sl.available ?? 0)) ?? 0;
+    return sl?.freePlaces ?? 0;
   }), [slots, currentDate]);
 
-  // helper: find slot by date/hour, prefer exact start_date match and appointment_id presence
-  const findMatchedSlot = useCallback((dateIso: string, hour: number) => {
-    if (!dateIso) return null;
-    for (const s of slots) {
-      if (!s.start_date) continue;
-      const sd = s.start_date;
-      const d = sd.split(/[T\s]/)[0] || "";
-      const m = sd.match(/T?(\d{2}):(\d{2})/);
-      const sh = m ? Number(m[1]) : (typeof s.hour === "number" ? s.hour : undefined);
-      if (d === dateIso && typeof sh === "number" && sh === hour) return s;
-    }
-    for (const s of slots) {
-      if (s.date === dateIso && typeof s.hour === "number" && s.hour === hour) return s;
-    }
-    return null;
-  }, [slots]);
-
-  // auto-resize postMessage
+  // auto-resize
   useEffect(() => {
-    const post = () => { const root = document.querySelector('.pw-embed-root') as HTMLElement | null; const h = root ? root.scrollHeight : (document.documentElement.scrollHeight || document.body.scrollHeight || 0); try { window.parent?.postMessage({ type: "dvvs:wheels:height", height: h }, "*"); } catch (e) {} };
+    const post = () => { const root = document.querySelector('.pw-embed-root') as HTMLElement | null; const h = root ? root.scrollHeight : (document.documentElement.scrollHeight || document.body.scrollHeight || 0); window.parent?.postMessage({ type: "dvvs:wheels:height", height: h }, "*"); };
     post();
     const ro = new ResizeObserver(post);
     const rootEl = document.querySelector('.pw-embed-root');
     if (rootEl) ro.observe(rootEl);
-    const t = setInterval(post, 1000);
     window.addEventListener("load", post);
+    const t = setInterval(post, 1000);
     return () => { ro.disconnect(); window.removeEventListener('load', post); clearInterval(t); };
   }, []);
 
   const compact = cfg.mode === "compact";
   const T = compact ? THEME_COMPACT : THEME_NORMAL;
 
+  // compute initial bg from URL (so injector that sets URL params works immediately)
   const initialBgFromUrl = useMemo<string | null>(() => {
     try {
       if (typeof urlCfg.inlineBg === "string" && urlCfg.inlineBg.trim().startsWith("rgba")) return urlCfg.inlineBg.trim();
@@ -394,6 +289,7 @@ const PoolWheelWidgetEmbed: React.FC<Props> = ({ onSelectSlot, mode: propMode, f
     return initialBgFromUrl ?? "rgba(4,22,25,0.72)";
   }, [cfg.transparentBg, initialBgFromUrl]);
 
+  // styleVars with initial --pw-bg (will be overridden by postMessage if needed)
   const styleVars: React.CSSProperties = {
     ["--color-primary" as any]: cfg.color,
     ["--color-primary-strong" as any]: cfg.color,
@@ -443,6 +339,7 @@ const PoolWheelWidgetEmbed: React.FC<Props> = ({ onSelectSlot, mode: propMode, f
   const headerTime = selectedHour != null ? `${pad2(selectedHour)}:00` : "";
   const headline = headerDate && headerTime ? `${headerDate} ${headerTime}` : (headerDate || headerTime);
 
+  // runtime postMessage listener - override --pw-bg when dvvs:embedConfig arrives
   const rootRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     function onMsg(e: MessageEvent) {
@@ -476,80 +373,21 @@ const PoolWheelWidgetEmbed: React.FC<Props> = ({ onSelectSlot, mode: propMode, f
     return () => window.removeEventListener("message", onMsg, false);
   }, []);
 
-  // booking handler — persist appointment_id if present
-  const onBookClick = useCallback(async () => {
+  // booking handler
+  const onBookClick = useCallback(() => {
     if (!currentDate) return;
     let hour = selectedHour;
     const available = Array.from(dateHoursSet).sort((a,b) => a-b);
     if (hour == null && available.length) hour = available[0];
     if (hour == null) return;
     const startIso = `${currentDate}T${pad2(hour)}:00:00`;
-
-    // ensure we have appointment_id by probing /slots for the exact date (safe)
-    try {
-      const base = (window as any).__PW_API_BASE__ || "/catalog/api-backend/api";
-      const probeUrl = `${base}/slots?start_date=${encodeURIComponent(currentDate)}&end_date=${encodeURIComponent(currentDate)}`;
-      const r = await fetch(probeUrl, { headers: { Accept: "application/json" } });
-      const txt = await r.text();
-      let parsed: any = null;
-      try { parsed = txt ? JSON.parse(txt) : null; } catch { parsed = null; }
-      const backendSlots = Array.isArray(parsed?.slots) ? parsed.slots : (Array.isArray(parsed) ? parsed : (parsed?.data || []));
-
-      // try to write appointment_id if found for exact hour
-      if (Array.isArray(backendSlots) && backendSlots.length) {
-        for (const b of backendSlots) {
-          const sd = b.start_date || b.start || "";
-          const d = sd.split(/[T\s]/)[0] || "";
-          const m = sd.match(/T?(\d{2}):(\d{2})/);
-          const h = m ? Number(m[1]) : undefined;
-          if (d === currentDate && typeof h === "number" && h === hour && (b.appointment_id || b.id)) {
-            try { localStorage.setItem('pw:selectedAppointmentId', String(b.appointment_id || b.id)); } catch(e){}
-            break;
-          }
-        }
-      } else {
-        // try expanded range if nothing found
-        const d0 = new Date(currentDate);
-        const a = new Date(d0); a.setDate(d0.getDate() - 2);
-        const bEnd = new Date(d0); bEnd.setDate(d0.getDate() + 2);
-        const expandedUrl = `${base}/slots?start_date=${a.toISOString().slice(0,10)}&end_date=${bEnd.toISOString().slice(0,10)}`;
-        const rr = await fetch(expandedUrl, { headers: { Accept: "application/json" } });
-        const txt2 = await rr.text();
-        let parsed2: any = null;
-        try { parsed2 = txt2 ? JSON.parse(txt2) : null; } catch { parsed2 = null; }
-        const backendSlots2 = Array.isArray(parsed2?.slots) ? parsed2.slots : (Array.isArray(parsed2) ? parsed2 : (parsed2?.data || []));
-        if (Array.isArray(backendSlots2) && backendSlots2.length) {
-          for (const bslot of backendSlots2) {
-            const sd = bslot.start_date || bslot.start || "";
-            const d = sd.split(/[T\s]/)[0] || "";
-            const m = sd.match(/T?(\d{2}):(\d{2})/);
-            const h = m ? Number(m[1]) : undefined;
-            if (d === currentDate && typeof h === "number" && h === hour && (bslot.appointment_id || bslot.id)) {
-              try { localStorage.setItem('pw:selectedAppointmentId', String(bslot.appointment_id || bslot.id)); } catch(e){}
-              break;
-            }
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('[PoolWheel] probe for appointment_id in onBookClick failed', e);
-    }
-
-    // find matched slot in current normalized slots (may have been enriched earlier)
-    const matched = findMatchedSlot(currentDate, hour);
-    const appointment_id = (matched && (matched as any).appointment_id) ? (matched as any).appointment_id : (() => { try { return localStorage.getItem('pw:selectedAppointmentId') || undefined; } catch { return undefined; } })();
-
-    // persist selection for wizard
+    const payload = { href: `/pool-booking?start=${startIso}&pool=Тренировочный бассейн`, start: startIso, date: currentDate, hour, source: 'wheel', next: 'phone' };
     try { localStorage.setItem('pw:selectedStart', startIso); } catch(e){}
-    try { if (appointment_id) localStorage.setItem('pw:selectedAppointmentId', String(appointment_id)); else localStorage.removeItem('pw:selectedAppointmentId'); } catch(e){}
-
-    const payload: any = { href: `/pool-booking?start=${startIso}&pool=Тренировочный бассейн${appointment_id ? `&appointment_id=${appointment_id}` : ''}`, start: startIso, date: currentDate, hour, appointment_id, source: 'wheel', next: 'phone' };
-
     try { if (typeof onSelectSlot === 'function') onSelectSlot(currentDate, hour); } catch(e){}
     try { window.postMessage({ type:'dvvs:openBooking', payload }, '*'); } catch(e){}
     try { if (window.parent && window.parent !== window) window.parent.postMessage({ type:'dvvs:openBooking', payload }, '*'); } catch(e){}
     try { window.dispatchEvent(new CustomEvent('pw:slotSelected', { detail: payload })); } catch(e){}
-  }, [currentDate, selectedHour, dateHoursSet, findMatchedSlot, onSelectSlot]);
+  }, [currentDate, selectedHour, dateHoursSet, onSelectSlot]);
 
   return (
     <>
@@ -563,7 +401,7 @@ const PoolWheelWidgetEmbed: React.FC<Props> = ({ onSelectSlot, mode: propMode, f
             <div className="pw-wheels-row" style={rowStyle}>
               <div className="pw-wheel-card" style={cardStyle}>
                 <div className="pw-label" style={labelBase}>Дата</div>
-                <Wheel items={dates.map(formatIsoToDDMM)} activeIndex={dateIndex} onChange={(i)=>setDateIndex(i)} ariaLabel="Дата"
+                <Wheel items={dates.map(formatIsoToDDMM)} activeIndex={dateIndex} onChange={setDateIndex} ariaLabel="Дата"
                   itemHeight={T.ITEM_H} windowRows={T.WINDOW_ROWS} compact={compact} activeColor={cfg.color} breakFontSize={T.BREAK_FS} />
               </div>
               <div className="pw-wheel-card" style={cardStyle}>
