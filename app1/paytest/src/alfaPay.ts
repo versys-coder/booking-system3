@@ -23,7 +23,7 @@ async function apiFetch(url: string, options: any = {}, name = "") {
   }
 }
 
-const API_BASE = "/api";
+const API_BASE = "/catalog/api-backend/api";
 
 // ----------------------
 // helper
