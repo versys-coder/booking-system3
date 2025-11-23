@@ -1,8 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-
-/**
- * Success (full rewritten version with PAYMENT button)
- */
+import Payment from "./Payment";
 
 function shortDateDisplay(raw?: string) {
   if (!raw) return "—";
@@ -43,13 +40,8 @@ function pickClientFromBooking(payload: any) {
   }
   if (typeof payload === "object") {
     for (const k of Object.keys(payload)) {
-      const v = payload[k];
-      if (
-        v &&
-        typeof v === "object" &&
-        (v.client_name || v.name || v.phone || v.email)
-      )
-        return v;
+      const v = (payload as any)[k];
+      if (v && typeof v === "object" && (v.client_name || v.name || v.phone || v.email)) return v;
     }
   }
   return null;
@@ -60,19 +52,14 @@ function extractAppointmentFromBooking(payload: any) {
   if (payload?.appointment) return payload.appointment;
   if (payload?.data?.appointment) return payload.data.appointment;
   if (payload?.data?.data?.appointment) return payload.data.data.appointment;
-  if (payload?.booking && payload.booking.appointment)
-    return payload.booking.appointment;
-  if (
-    payload?.bookingResult &&
-    payload.bookingResult.data &&
-    payload.bookingResult.data.appointment
-  )
+  if (payload?.booking && payload.booking.appointment) return payload.booking.appointment;
+  if (payload?.bookingResult && payload.bookingResult.data && payload.bookingResult.data.appointment)
     return payload.bookingResult.data.appointment;
   if (payload?.data && typeof payload.data === "object") {
-    for (const k of Object.keys(payload.data)) {
+    const keys = Object.keys(payload.data);
+    for (const k of keys) {
       const v = payload.data[k];
-      if (v && typeof v === "object" && v.id && (v.date_time || v.start_date))
-        return v;
+      if (v && typeof v === "object" && (v.id && (v.date_time || v.start_date))) return v;
     }
   }
   return null;
@@ -81,11 +68,9 @@ function extractAppointmentFromBooking(payload: any) {
 export default function Success({
   client,
   onNewBooking,
-  onPay, // <-- добавлено
 }: {
   client?: any;
   onNewBooking?: () => void;
-  onPay?: () => void;
 }) {
   const [remoteClient, setRemoteClient] = useState<any | null>(null);
   const [loadingClient, setLoadingClient] = useState(false);
@@ -163,6 +148,7 @@ export default function Success({
       setClientError(null);
       return;
     }
+
     const token = guessToken;
     if (!token) return;
 
@@ -172,8 +158,7 @@ export default function Success({
 
     (async () => {
       try {
-        const base =
-          (window as any).__PW_API_BASE__ || "/catalog/api-backend/api";
+        const base = (window as any).__PW_API_BASE__ || "/catalog/api-backend/api";
         const resp = await fetch(`${base}/client`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -189,15 +174,11 @@ export default function Success({
         if (!mounted) return;
         if (!resp.ok) {
           setClientError(
-            `Client API error ${resp.status}: ${JSON.stringify(data).slice(
-              0,
-              600
-            )}`
+            `Client API error ${resp.status}: ${JSON.stringify(data).slice(0, 600)}`
           );
           return;
         }
-        const resolved =
-          data?.data?.client || data?.client || data?.data || data;
+        const resolved = data?.data?.client || data?.client || data?.data || data;
         setRemoteClient(resolved);
       } catch (e: any) {
         if (!mounted) return;
@@ -214,16 +195,15 @@ export default function Success({
 
   function formatClientName(c: any) {
     if (!c) return null;
-    return (
+    const maybe =
       c.client_name ||
       c.clientName ||
       c.name ||
       (c.first_name && c.last_name && `${c.first_name} ${c.last_name}`) ||
       c.full_name ||
       c.fio ||
-      c.clientName ||
-      null
-    );
+      c.clientName;
+    return maybe || null;
   }
 
   const clientName = formatClientName(remoteClient || embeddedClient);
@@ -246,6 +226,29 @@ export default function Success({
     }
   }, [client]);
 
+  const paymentPhone = useMemo(() => {
+    const c = (remoteClient || embeddedClient || {}) as any;
+    let ph: any =
+      c.phone ||
+      (Array.isArray(c.phones) ? c.phones[0] : null) ||
+      bookingWrapper?.phone ||
+      null;
+    if (Array.isArray(ph)) ph = ph[0];
+    if (!ph) return null;
+    return String(ph).replace(/\D+/g, "");
+  }, [remoteClient, embeddedClient, bookingWrapper]);
+
+  const paymentStartDateTime = useMemo(() => {
+    if (!bookingTime) return null;
+    let s = String(bookingTime);
+    if (s.indexOf(" ") !== -1 && s.indexOf("T") === -1) s = s.replace(" ", "T");
+    return s;
+  }, [bookingTime]);
+
+  const SERVICE_ID = "9672bb23-7060-11f0-a902-00583f11e32d";
+  const SERVICE_NAME = "Самостоятельное плавание";
+  const TEST_MODE = true; // на тесте; на бою поменяешь на false
+
   return (
     <div
       style={{
@@ -267,7 +270,13 @@ export default function Success({
         }}
       >
         <div style={{ fontSize: 14, opacity: 0.9 }}>Время брони:</div>
-        <div style={{ fontSize: 20, fontWeight: 700, marginTop: 8 }}>
+        <div
+          style={{
+            fontSize: 20,
+            fontWeight: 700,
+            marginTop: 8,
+          }}
+        >
           {bookingTime ? shortDateDisplay(bookingTime) : "—"}
         </div>
         {appointmentId && (
@@ -281,7 +290,9 @@ export default function Success({
       </div>
 
       <div style={{ marginTop: 8, marginBottom: 18 }}>
-        {loadingClient && <div style={{ marginBottom: 8 }}>Загрузка клиента…</div>}
+        {loadingClient && (
+          <div style={{ marginBottom: 8 }}>Загрузка данных клиента…</div>
+        )}
         {clientError && (
           <div style={{ marginBottom: 8, color: "#b91c1c" }}>
             Не удалось получить данные клиента: {clientError}
@@ -314,35 +325,46 @@ export default function Success({
             </b>
           </div>
         )}
-        <div style={{ fontSize: 13, color: "#444", marginTop: 6 }}>
+        <div
+          style={{
+            fontSize: 13,
+            color: "#444",
+            marginTop: 6,
+          }}
+        >
           Пожалуйста, проверьте SMS/почту для подтверждения.
         </div>
       </div>
 
-      {/* ==== КНОПКА ОПЛАТЫ (НОВАЯ) ==== */}
-      {onPay && (
-        <div style={{ marginTop: 18 }}>
-          <button
-            onClick={onPay}
-            style={{
-              padding: "14px 22px",
-              background: "#0b5cff",
-              color: "#fff",
-              border: "none",
-              borderRadius: "10px",
-              cursor: "pointer",
-              fontSize: "16px",
-              fontWeight: 700,
-            }}
-          >
-            Оплатить онлайн
-          </button>
+      {paymentPhone && paymentStartDateTime && (
+        <div
+          style={{
+            marginTop: 12,
+            marginBottom: 16,
+            borderTop: "1px solid #e5e7eb",
+            paddingTop: 12,
+          }}
+        >
+            <Payment
+              serviceId={SERVICE_ID}
+              serviceName={SERVICE_NAME}
+              startDateTime={paymentStartDateTime}
+              phone={paymentPhone}
+              onPaid={() => {
+                // при желании тут можно что-то показать / обновить
+              }}
+            />
         </div>
       )}
 
-      {/* Raw debug */}
-      <div style={{ textAlign: "left", marginTop: 18 }}>
-        <div style={{ fontSize: 13, marginBottom: 6, color: "#666" }}>
+      <div style={{ textAlign: "left", marginTop: 6 }}>
+        <div
+          style={{
+            fontSize: 13,
+            marginBottom: 6,
+            color: "#666",
+          }}
+        >
           Raw booking response (для отладки):
         </div>
         <pre
@@ -373,7 +395,7 @@ export default function Success({
           onClick={() => {
             try {
               onNewBooking && onNewBooking();
-            } catch (e) {}
+            } catch {}
           }}
           style={{
             padding: "10px 18px",
